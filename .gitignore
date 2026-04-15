@@ -1,0 +1,17 @@
+# Chặn thư mục thư viện của cả 2
+node_modules/
+backend/node_modules/
+frontend/node_modules/
+
+# Chặn file môi trường (chứa mật khẩu DB)
+.env
+backend/.env
+
+# Chặn các file rác của hệ thống/IDE
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Chặn thư mục build khi chạy frontend
+frontend/dist/
+frontend/build/
