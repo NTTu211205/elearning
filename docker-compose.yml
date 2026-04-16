@@ -1,0 +1,38 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: database
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: ElearningDatabase
+    ports:
+      - "3307:3306"
+    volumes:
+      - ./databases/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - mysql_data:/var/lib/mysql
+
+  backend:
+    build: ./backend
+    container_name: elearning_backend
+    ports:
+      - "5000:5000"
+    environment:
+      - DB_HOST=db
+      - DB_USER=root
+      - DB_PASSWORD=123456
+      - DB_NAME=ElearingDatabase
+    depends_on:
+      - db
+
+  frontend:
+    build: ./frontend
+    container_name: elearning_frontend
+    ports:
+      - "5173:5173"
+    stdin_open: true
+    depends_on:
+      - backend
+
+volumes:
+  mysql_data:
