@@ -1,0 +1,298 @@
+paths:
+  /users:
+    post:
+      summary: Thêm người dùng mới vào hệ thống
+      tags:
+        - Users
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - dob
+                - role
+                - email
+                - phone
+                - password
+              properties:
+                name:
+                  type: string
+                  description: Họ và tên đầy đủ của người dùng
+                  example: "Nguyễn Thành Tú"
+                dob:
+                  type: string
+                  format: date
+                  description: Ngày tháng năm sinh (YYYY-MM-DD)
+                  example: "2005-12-21"
+                role:
+                  type: string
+                  description: Vai trò trong hệ thống
+                  enum: [student, teacher, admin]
+                  example: "student"
+                email:
+                  type: string
+                  format: email
+                  description: Địa chỉ email (thường là email sinh viên/giảng viên)
+                  example: "thanhtu.52300076@student.tdtu.edu.vn"
+                phone:
+                  type: string
+                  description: Số điện thoại liên lạc
+                  example: "0901234567"
+                password:
+                  type: string
+                  format: password
+                  description: Mật khẩu đăng nhập
+                  example: "123456"
+      responses:
+        '201':
+          description: Thêm người dùng thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Success"
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 1
+                      name:
+                        type: string
+                        example: "Nguyễn Thành Tú"
+        '400':
+          description: Thiếu thông tin bắt buộc hoặc lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Vui lòng điền đầy đủ các trường bắt buộc"
+
+    get:
+      summary: Lấy danh sách tất cả người dùng
+      description: API này trả về mảng chứa thông tin của toàn bộ người dùng trong hệ thống. Thường được sử dụng cho trang quản trị của Admin.
+      tags:
+        - Users
+      responses:
+        '200':
+          description: Lấy danh sách thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Success"
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          example: 1
+                        name:
+                          type: string
+                          example: "Nguyễn Thành Tú"
+                        dob:
+                          type: string
+                          format: date
+                          example: "2005-12-21"
+                        role:
+                          type: string
+                          example: "student"
+                        email:
+                          type: string
+                          example: "thanhtu.52300076@student.tdtu.edu.vn"
+                        phone:
+                          type: string
+                          example: "0901234567"
+                        status:
+                          type: integer
+                          description: 1 là Hoạt động, 0 là Bị khóa
+                          example: 1
+                        createdAt:
+                          type: string
+                          format: date-time
+                          example: "2026-04-16T15:30:00Z"
+        '400':
+          description: Lỗi truy xuất dữ liệu từ máy chủ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Lỗi kết nối cơ sở dữ liệu"
+
+  /users/{id}:
+    delete:
+      summary: Xóa một người dùng
+      description: Thực hiện xóa mềm (chuyển status về 0) người dùng khỏi hệ thống dựa trên ID.
+      tags:
+        - Users
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID của người dùng cần xóa
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Xóa người dùng thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "success"
+                  data:
+                    type: boolean
+                    example: true
+        '404':
+          description: Không tìm thấy người dùng
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "User not exist"
+    
+    put:
+      summary: Cập nhật thông tin người dùng
+      description: API này cho phép chỉnh sửa thông tin cá nhân của người dùng (tên, ngày sinh, email, số điện thoại, vai trò) dựa trên ID.
+      tags:
+        - Users
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID của người dùng cần cập nhật
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: "Nguyễn Thành Tú (Updated)"
+                dob:
+                  type: string
+                  format: date
+                  example: "2005-12-21"
+                email:
+                  type: string
+                  format: email
+                  example: "thanhtu.new@student.tdtu.edu.vn"
+                phone:
+                  type: string
+                  example: "0988888888"
+                role:
+                  type: string
+                  enum: [student, teacher, admin]
+                  example: "student"
+      responses:
+        '200':
+          description: Cập nhật người dùng thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Success"
+                  data:
+                    type: object
+                    description: Object chứa thông tin người dùng vừa được cập nhật
+        '400':
+          description: Lỗi dữ liệu đầu vào (VD trùng email) hoặc lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Email hoặc số điện thoại đã tồn tại"
+
+    get:
+      summary: Lấy thông tin chi tiết một người dùng
+      description: Truy xuất toàn bộ thông tin của một người dùng cụ thể (không bao gồm mật khẩu) dựa trên ID.
+      tags:
+        - Users
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID của người dùng cần lấy thông tin
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Lấy thông tin thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Success"
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 1
+                      name:
+                        type: string
+                        example: "Nguyễn Thành Tú"
+                      dob:
+                        type: string
+                        format: date
+                        example: "2005-12-21"
+                      role:
+                        type: string
+                        example: "student"
+                      email:
+                        type: string
+                        format: email
+                        example: "thanhtu.52300076@student.tdtu.edu.vn"
+                      phone:
+                        type: string
+                        example: "0901234567"
+                      status:
+                        type: integer
+                        description: 1 là Hoạt động, 0 là Bị khóa
+                        example: 1
+        '400':
+          description: Không tìm thấy người dùng hoặc lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "User not found"

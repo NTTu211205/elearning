@@ -1,0 +1,66 @@
+const db = require('../config/MySQLConnect');
+const bcrypt = require('bcryptjs');
+
+const createUser = async (userData) => {
+    const {name, dob, role, email, phone, password} = userData;
+
+    const [existingUsers] = await db.execute('SELECT * FROM user where email = ? or phone = ?', [email, phone]);
+    if (existingUsers.length > 0) {
+        throw new Error("User exist");
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashPassword = await bcrypt.hash(password, salt);
+
+    const [result] = await db.execute
+    ('INSERT INTO user (name, dob, role, email, phone, password, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
+         [name, dob, role, email, phone, hashPassword, 1]);
+
+    return {
+        id: result.insertId,
+        name, dob, role, email, phone
+    };
+};
+
+const getAllUser = async() => {
+    const [result] = await db.execute('SELECT name, dob, role, email, phone FROM user');
+    return result;
+}
+
+const deleteUser = async(id) => {
+    const [result] = await db.execute("UPDATE user SET status = 0 WHERE id = ?" , [id]);
+    
+    if (result.affectedRows === 0) {
+        throw new Error("User not exist");
+    }
+
+    return true;
+}
+
+const updateUser = async(id, userData) => {
+    const {name, dob, email, phone, role} = userData;
+
+    const [user] = await db.execute('SELECT * FROM user WHERE id = ?', [id]);
+    if (user.length === 0) {
+        throw new Error("User not exist");
+    }
+
+    const [result] = await db.execute
+    ('UPDATE user SET name = ?, dob = ?, email = ?, phone = ?, role =? WHERE id = ?', [name, dob, email, phone, role, id]);
+
+    if (result.affectedRows === 0) {
+        throw new Error("Update failed");
+    }
+    return {id, name, dob, email, phone, role};
+}
+
+const getUserById = async(id) => {
+    const [result] = await db.execute('SELECT name, dob, phone, email, role FROM user WHERE id = ?', [id]);
+
+    if (result.length === 0) {
+        throw new Error("User not exist");
+    }
+    return result[0];
+}
+
+module.exports = {createUser, getAllUser, deleteUser, updateUser, getUserById};
