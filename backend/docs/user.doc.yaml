@@ -1,7 +1,296 @@
+openapi: 3.0.3
+info:
+  title: E-Learning Backend API
+  description: |
+    API tài liệu cho hệ thống E-Learning backend.
+    
+    ## Xác thực (Authentication)
+    Hầu hết các endpoint yêu cầu **Bearer Token** trong header `Authorization`.
+    Sau khi đăng nhập thành công, hãy gắn token vào mỗi request như sau:
+    ```
+    Authorization: Bearer <accessToken>
+    ```
+    Khi token hết hạn, sử dụng endpoint `/auth/refresh-token` để lấy token mới.
+
+    ## Phân quyền (Authorization)
+    - **Public**: Không yêu cầu token
+    - **Authenticated**: Yêu cầu token hợp lệ (bất kỳ role nào)
+    - **Admin only**: Yêu cầu token hợp lệ với role = `admin`
+  version: 1.0.0
+  contact:
+    name: Nguyễn Thành Tú
+
+servers:
+  - url: http://localhost:5000
+    description: Local development server
+
+tags:
+  - name: Auth
+    description: Đăng nhập, đăng xuất và làm mới token
+  - name: Users
+    description: Quản lý người dùng trong hệ thống
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Nhập access token nhận được sau khi đăng nhập
+
+  schemas:
+    UserObject:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: ID tự tăng trong cơ sở dữ liệu
+          example: 1
+        name:
+          type: string
+          description: Họ và tên đầy đủ
+          example: "Nguyễn Thành Tú"
+        dob:
+          type: string
+          format: date
+          description: Ngày sinh (YYYY-MM-DD)
+          example: "2005-12-21"
+        role:
+          type: string
+          description: Vai trò trong hệ thống
+          enum: [student, teacher, admin]
+          example: "student"
+        email:
+          type: string
+          format: email
+          example: "thanhtu.52300076@student.tdtu.edu.vn"
+        phone:
+          type: string
+          description: Số điện thoại (10 chữ số)
+          example: "0901234567"
+        status:
+          type: integer
+          description: Trạng thái tài khoản — 1 là Hoạt động, 0 là Bị khóa
+          enum: [0, 1]
+          example: 1
+
+    TokenPair:
+      type: object
+      properties:
+        accessToken:
+          type: string
+          description: JWT access token (ngắn hạn)
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        refreshToken:
+          type: string
+          description: JWT refresh token (dài hạn, dùng để lấy access token mới)
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+
+    SuccessMessage:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Success"
+
+    ErrorMessage:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Thông báo lỗi"
+
+    ValidationError:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Thông báo lỗi validate từ trường đầu tiên thất bại
+          example: "Email is not valid"
+
 paths:
+
+  # ─────────────────────────────────────────────
+  #  AUTH ENDPOINTS
+  # ─────────────────────────────────────────────
+
+  /auth/login:
+    post:
+      summary: Đăng nhập hệ thống
+      description: |
+        Xác thực người dùng bằng email và mật khẩu.  
+        Trả về cặp `accessToken` và `refreshToken` để sử dụng cho các request tiếp theo.
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  description: Địa chỉ email đã đăng ký
+                  example: "thanhtu.52300076@student.tdtu.edu.vn"
+                password:
+                  type: string
+                  format: password
+                  description: Mật khẩu đăng nhập
+                  example: "123456"
+      responses:
+        '200':
+          description: Đăng nhập thành công
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessMessage'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/TokenPair'
+              example:
+                message: "Success"
+                data:
+                  accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  refreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        '400':
+          description: Sai email hoặc mật khẩu, hoặc tài khoản bị khóa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+              example:
+                message: "Invalid email or password"
+
+  /auth/logout:
+    post:
+      summary: Đăng xuất khỏi hệ thống
+      description: |
+        Hủy `refreshToken` hiện tại. Sau khi gọi endpoint này,  
+        refresh token đó sẽ không còn dùng được để lấy access token mới.
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - refreshToken
+              properties:
+                refreshToken:
+                  type: string
+                  description: Refresh token cần hủy
+                  example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+      responses:
+        '200':
+          description: Đăng xuất thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+              example:
+                message: "Success"
+        '400':
+          description: Thiếu refresh token hoặc token không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+              examples:
+                missing_token:
+                  summary: Không truyền token
+                  value:
+                    message: "Provide token"
+                invalid_token:
+                  summary: Token không hợp lệ
+                  value:
+                    message: "Invalid refresh token"
+
+  /auth/refresh-token:
+    post:
+      summary: Làm mới access token
+      description: |
+        Dùng `refreshToken` hợp lệ để lấy cặp `accessToken` và `refreshToken` mới.  
+        Thường được gọi khi nhận được lỗi `TOKEN_EXPIRED` (HTTP 401) từ các endpoint khác.
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - oldRefreshToken
+              properties:
+                oldRefreshToken:
+                  type: string
+                  description: Refresh token hiện tại muốn làm mới
+                  example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+      responses:
+        '200':
+          description: Làm mới token thành công
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - type: object
+                    properties:
+                      message:
+                        type: string
+                        example: "success"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/TokenPair'
+              example:
+                message: "success"
+                data:
+                  accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  refreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        '400':
+          description: Thiếu refresh token hoặc token đã hết hạn / không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+              examples:
+                missing_token:
+                  summary: Không truyền token
+                  value:
+                    message: "Provide refresh token"
+                expired_token:
+                  summary: Token đã hết hạn
+                  value:
+                    message: "Refresh token expired"
+
+  # ─────────────────────────────────────────────
+  #  USER ENDPOINTS
+  # ─────────────────────────────────────────────
+
   /users:
     post:
-      summary: Thêm người dùng mới vào hệ thống
+      summary: Thêm người dùng mới
+      description: |
+        Tạo tài khoản người dùng mới trong hệ thống.  
+        **Không yêu cầu xác thực** — endpoint này thường được dùng bởi admin hoặc trong quá trình khởi tạo dữ liệu.
+
+        **Validation (thực hiện bởi middleware):**
+        - `name`: không được để trống
+        - `email`: phải đúng định dạng email
+        - `role`: phải là một trong `student`, `teacher`, `admin`
+        - `password`: tối thiểu 6 ký tự
+        - `phone`: đúng 10 chữ số
+
+        Mật khẩu sẽ được **hash bằng bcrypt** (salt rounds = 10) trước khi lưu vào cơ sở dữ liệu.
       tags:
         - Users
       requestBody:
@@ -20,12 +309,12 @@ paths:
               properties:
                 name:
                   type: string
-                  description: Họ và tên đầy đủ của người dùng
+                  description: Họ và tên đầy đủ
                   example: "Nguyễn Thành Tú"
                 dob:
                   type: string
                   format: date
-                  description: Ngày tháng năm sinh (YYYY-MM-DD)
+                  description: Ngày sinh (YYYY-MM-DD)
                   example: "2005-12-21"
                 role:
                   type: string
@@ -35,20 +324,20 @@ paths:
                 email:
                   type: string
                   format: email
-                  description: Địa chỉ email (thường là email sinh viên/giảng viên)
+                  description: Địa chỉ email (phải là duy nhất trong hệ thống)
                   example: "thanhtu.52300076@student.tdtu.edu.vn"
                 phone:
                   type: string
-                  description: Số điện thoại liên lạc
+                  description: Số điện thoại 10 chữ số (phải là duy nhất trong hệ thống)
                   example: "0901234567"
                 password:
                   type: string
                   format: password
-                  description: Mật khẩu đăng nhập
+                  description: Mật khẩu (tối thiểu 6 ký tự)
                   example: "123456"
       responses:
-        '201':
-          description: Thêm người dùng thành công
+        '200':
+          description: Tạo người dùng thành công
           content:
             application/json:
               schema:
@@ -62,26 +351,59 @@ paths:
                     properties:
                       id:
                         type: integer
-                        example: 1
+                        description: ID được gán bởi database
+                        example: 5
                       name:
                         type: string
                         example: "Nguyễn Thành Tú"
+                      dob:
+                        type: string
+                        format: date
+                        example: "2005-12-21"
+                      role:
+                        type: string
+                        example: "student"
+                      email:
+                        type: string
+                        example: "thanhtu.52300076@student.tdtu.edu.vn"
+                      phone:
+                        type: string
+                        example: "0901234567"
         '400':
-          description: Thiếu thông tin bắt buộc hoặc lỗi hệ thống
+          description: Lỗi validation đầu vào
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: "Vui lòng điền đầy đủ các trường bắt buộc"
+                $ref: '#/components/schemas/ValidationError'
+              examples:
+                missing_name:
+                  value: { message: "Name is not null" }
+                invalid_email:
+                  value: { message: "Email is not valid" }
+                invalid_role:
+                  value: { message: "Role is not valid" }
+                short_password:
+                  value: { message: "Password must have at least 6 characters" }
+                invalid_phone:
+                  value: { message: "Phone must have 10 number" }
+        '409':
+          description: Email hoặc số điện thoại đã tồn tại trong hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+              example:
+                message: "User exist"
 
     get:
       summary: Lấy danh sách tất cả người dùng
-      description: API này trả về mảng chứa thông tin của toàn bộ người dùng trong hệ thống. Thường được sử dụng cho trang quản trị của Admin.
+      description: |
+        Trả về danh sách toàn bộ người dùng trong hệ thống.  
+        **Yêu cầu:** Xác thực + Role **admin**.
       tags:
         - Users
+      security:
+        - bearerAuth: []
       responses:
         '200':
           description: Lấy danh sách thành công
@@ -98,9 +420,6 @@ paths:
                     items:
                       type: object
                       properties:
-                        id:
-                          type: integer
-                          example: 1
                         name:
                           type: string
                           example: "Nguyễn Thành Tú"
@@ -117,41 +436,54 @@ paths:
                         phone:
                           type: string
                           example: "0901234567"
-                        status:
-                          type: integer
-                          description: 1 là Hoạt động, 0 là Bị khóa
-                          example: 1
-                        createdAt:
-                          type: string
-                          format: date-time
-                          example: "2026-04-16T15:30:00Z"
         '400':
           description: Lỗi truy xuất dữ liệu từ máy chủ
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: "Lỗi kết nối cơ sở dữ liệu"
+                $ref: '#/components/schemas/ErrorMessage'
+        '401':
+          description: Chưa đăng nhập hoặc token hết hạn
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+              examples:
+                no_token:
+                  value: { message: "Token not found" }
+                expired:
+                  value: { message: "Token expired", code: "TOKEN_EXPIRED" }
+        '403':
+          description: Không có quyền admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+              example:
+                message: "Not permission"
 
   /users/{id}:
-    delete:
-      summary: Xóa một người dùng
-      description: Thực hiện xóa mềm (chuyển status về 0) người dùng khỏi hệ thống dựa trên ID.
+    get:
+      summary: Lấy thông tin chi tiết một người dùng
+      description: |
+        Trả về thông tin của người dùng theo ID (không bao gồm mật khẩu).  
+        **Yêu cầu:** Xác thực (bất kỳ role nào).  
+        Người dùng có thể xem thông tin của chính mình; admin có thể xem bất kỳ ai.
       tags:
         - Users
+      security:
+        - bearerAuth: []
       parameters:
         - name: id
           in: path
           required: true
-          description: ID của người dùng cần xóa
+          description: ID của người dùng cần tra cứu
           schema:
-            type: string
+            type: integer
+          example: 1
       responses:
         '200':
-          description: Xóa người dùng thành công
+          description: Lấy thông tin thành công
           content:
             application/json:
               schema:
@@ -159,39 +491,84 @@ paths:
                 properties:
                   message:
                     type: string
-                    example: "success"
+                    example: "Success"
                   data:
-                    type: boolean
-                    example: true
-        '404':
-          description: Không tìm thấy người dùng
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                        example: "Nguyễn Thành Tú"
+                      dob:
+                        type: string
+                        format: date
+                        example: "2005-12-21"
+                      phone:
+                        type: string
+                        example: "0901234567"
+                      email:
+                        type: string
+                        format: email
+                        example: "thanhtu.52300076@student.tdtu.edu.vn"
+                      role:
+                        type: string
+                        example: "student"
+        '400':
+          description: Không tìm thấy người dùng hoặc lỗi hệ thống
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: "User not exist"
-    
+                $ref: '#/components/schemas/ErrorMessage'
+              example:
+                message: "User not exist"
+        '401':
+          description: Chưa đăng nhập hoặc token không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+              examples:
+                no_token:
+                  value: { message: "Token not found" }
+                expired:
+                  value: { message: "Token expired", code: "TOKEN_EXPIRED" }
+
     put:
       summary: Cập nhật thông tin người dùng
-      description: API này cho phép chỉnh sửa thông tin cá nhân của người dùng (tên, ngày sinh, email, số điện thoại, vai trò) dựa trên ID.
+      description: |
+        Cập nhật thông tin cá nhân của người dùng theo ID.  
+        **Yêu cầu:** Xác thực (bất kỳ role nào).  
+
+        **Validation (thực hiện bởi middleware):**
+        - `name`: không được để trống
+        - `email`: phải đúng định dạng email
+        - `role`: phải là một trong `student`, `teacher`, `admin`
+        - `phone`: đúng 10 chữ số
+
+        > ⚠️ Tất cả các trường đều bắt buộc trong request body (theo validation hiện tại).
       tags:
         - Users
+      security:
+        - bearerAuth: []
       parameters:
         - name: id
           in: path
           required: true
           description: ID của người dùng cần cập nhật
           schema:
-            type: string
+            type: integer
+          example: 1
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              required:
+                - name
+                - dob
+                - email
+                - phone
+                - role
               properties:
                 name:
                   type: string
@@ -206,6 +583,7 @@ paths:
                   example: "thanhtu.new@student.tdtu.edu.vn"
                 phone:
                   type: string
+                  description: Số điện thoại 10 chữ số
                   example: "0988888888"
                 role:
                   type: string
@@ -213,44 +591,7 @@ paths:
                   example: "student"
       responses:
         '200':
-          description: Cập nhật người dùng thành công
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: "Success"
-                  data:
-                    type: object
-                    description: Object chứa thông tin người dùng vừa được cập nhật
-        '400':
-          description: Lỗi dữ liệu đầu vào (VD trùng email) hoặc lỗi hệ thống
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: "Email hoặc số điện thoại đã tồn tại"
-
-    get:
-      summary: Lấy thông tin chi tiết một người dùng
-      description: Truy xuất toàn bộ thông tin của một người dùng cụ thể (không bao gồm mật khẩu) dựa trên ID.
-      tags:
-        - Users
-      parameters:
-        - name: id
-          in: path
-          required: true
-          description: ID của người dùng cần lấy thông tin
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Lấy thông tin thành công
+          description: Cập nhật thành công
           content:
             application/json:
               schema:
@@ -267,27 +608,69 @@ paths:
                         example: 1
                       name:
                         type: string
-                        example: "Nguyễn Thành Tú"
+                        example: "Nguyễn Thành Tú (Updated)"
                       dob:
                         type: string
                         format: date
                         example: "2005-12-21"
+                      email:
+                        type: string
+                        example: "thanhtu.new@student.tdtu.edu.vn"
+                      phone:
+                        type: string
+                        example: "0988888888"
                       role:
                         type: string
                         example: "student"
-                      email:
-                        type: string
-                        format: email
-                        example: "thanhtu.52300076@student.tdtu.edu.vn"
-                      phone:
-                        type: string
-                        example: "0901234567"
-                      status:
-                        type: integer
-                        description: 1 là Hoạt động, 0 là Bị khóa
-                        example: 1
         '400':
-          description: Không tìm thấy người dùng hoặc lỗi hệ thống
+          description: Lỗi validation, không tìm thấy user, hoặc lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+              examples:
+                validation_fail:
+                  summary: Lỗi validate
+                  value: { message: "Email is not valid" }
+                not_found:
+                  summary: Không tìm thấy người dùng
+                  value: { message: "User not exist" }
+                update_fail:
+                  summary: Cập nhật thất bại
+                  value: { message: "Update failed" }
+        '401':
+          description: Chưa đăng nhập hoặc token không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+              examples:
+                no_token:
+                  value: { message: "Token not found" }
+                expired:
+                  value: { message: "Token expired", code: "TOKEN_EXPIRED" }
+
+    delete:
+      summary: Xóa người dùng (soft delete)
+      description: |
+        Thực hiện **xóa mềm** người dùng bằng cách chuyển trường `status` trong database từ `1` → `0`.  
+        Dữ liệu vẫn tồn tại trong hệ thống nhưng tài khoản không còn hoạt động.  
+        **Yêu cầu:** Xác thực + Role **admin**.
+      tags:
+        - Users
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID của người dùng cần xóa
+          schema:
+            type: integer
+          example: 3
+      responses:
+        '200':
+          description: Xóa người dùng thành công
           content:
             application/json:
               schema:
@@ -295,4 +678,35 @@ paths:
                 properties:
                   message:
                     type: string
-                    example: "User not found"
+                    example: "success"
+                  data:
+                    type: boolean
+                    description: Trả về `true` khi xóa thành công
+                    example: true
+        '400':
+          description: Không tìm thấy người dùng hoặc lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+              example:
+                message: "User not exist"
+        '401':
+          description: Chưa đăng nhập hoặc token không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+              examples:
+                no_token:
+                  value: { message: "Token not found" }
+                expired:
+                  value: { message: "Token expired", code: "TOKEN_EXPIRED" }
+        '403':
+          description: Không có quyền admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+              example:
+                message: "Not permission"
