@@ -1,0 +1,711 @@
+openapi: 3.0.3
+info:
+  title: E-Learning Backend API — Test
+  description: |
+    API tài liệu cho các endpoint quản lý **đề thi (Test)** trong hệ thống E-Learning.
+
+    ## Cấu trúc bảng `test`
+    | Cột | Kiểu | Mô tả |
+    |-----|------|-------|
+    | `id` | INT AUTO_INCREMENT | Khóa chính |
+    | `name` | VARCHAR(100) | Tên đề thi |
+    | `class_id` | INT | Lớp học chứa đề thi (FK → class) |
+    | `createBy` | INT | Người tạo đề (FK → user, role = teacher/admin) |
+    | `turn` | INT | Lượt thi (mặc định 1) |
+    | `startAt` | DATETIME | Thời gian bắt đầu thi |
+    | `endAt` | DATETIME | Thời gian kết thúc thi |
+    | `duration` | INT | Thời lượng làm bài (phút) |
+    | `num_question` | INT | Số câu hỏi trong đề |
+
+    ## Lưu ý
+    - Các endpoint hiện tại **chưa áp dụng middleware xác thực**.
+    - Khi production, POST / PUT / DELETE sẽ yêu cầu Bearer Token + role `teacher` hoặc `admin`.
+  version: 1.0.0
+  contact:
+    name: Nguyễn Thành Tú
+
+servers:
+  - url: http://localhost:5000
+    description: Local development server
+
+tags:
+  - name: Tests
+    description: Quản lý đề thi trong hệ thống
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Nhập access token nhận được sau khi đăng nhập
+
+  schemas:
+    TestObject:
+      type: object
+      description: Đối tượng đề thi đầy đủ từ bảng `test`
+      properties:
+        id:
+          type: integer
+          description: ID tự tăng của đề thi
+          example: 1
+        name:
+          type: string
+          description: Tên đề thi
+          example: "Kiểm tra giữa kỳ - CSDT K20A"
+        class_id:
+          type: integer
+          description: ID lớp học chứa đề thi
+          example: 1
+        createBy:
+          type: integer
+          description: ID người tạo đề thi
+          example: 1
+        turn:
+          type: integer
+          description: Lượt thi
+          example: 1
+        startAt:
+          type: string
+          format: date-time
+          description: Thời gian bắt đầu thi
+          example: "2025-03-15T07:30:00.000Z"
+        endAt:
+          type: string
+          format: date-time
+          description: Thời gian kết thúc thi
+          example: "2025-03-15T09:30:00.000Z"
+        duration:
+          type: integer
+          description: Thời lượng làm bài (phút)
+          example: 90
+        num_question:
+          type: integer
+          description: Số câu hỏi trong đề
+          example: 40
+
+    TestByClassItem:
+      type: object
+      description: Schema dành riêng cho response của GET /test/class/{classId}
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "Kiểm tra giữa kỳ - CSDT K20A"
+        turn:
+          type: integer
+          example: 1
+        startAt:
+          type: string
+          format: date-time
+          example: "2025-03-15T07:30:00.000Z"
+        endAt:
+          type: string
+          format: date-time
+          example: "2025-03-15T09:30:00.000Z"
+        duration:
+          type: integer
+          example: 90
+        num_question:
+          type: integer
+          example: 40
+        createdByName:
+          type: string
+          description: Tên người tạo đề thi (JOIN từ bảng user)
+          example: "Nguyễn Văn An"
+
+    TestByCreatorItem:
+      type: object
+      description: Schema dành riêng cho response của GET /test/creator/{creatorId}
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "Kiểm tra giữa kỳ - CSDT K20A"
+        class_id:
+          type: integer
+          example: 1
+        turn:
+          type: integer
+          example: 1
+        startAt:
+          type: string
+          format: date-time
+          example: "2025-03-15T07:30:00.000Z"
+        endAt:
+          type: string
+          format: date-time
+          example: "2025-03-15T09:30:00.000Z"
+        duration:
+          type: integer
+          example: 90
+        num_question:
+          type: integer
+          example: 40
+        className:
+          type: string
+          description: Tên lớp học (JOIN từ bảng class)
+          example: "CSDT-K20A"
+
+    TestInput:
+      type: object
+      required:
+        - name
+        - classId
+        - createBy
+        - duration
+        - numQuestion
+      properties:
+        name:
+          type: string
+          description: Tên đề thi
+          example: "Kiểm tra giữa kỳ - CSDT K20A"
+        classId:
+          type: integer
+          description: ID lớp học (phải tồn tại trong hệ thống)
+          example: 1
+        createBy:
+          type: integer
+          description: ID người tạo đề (phải có role teacher hoặc admin)
+          example: 1
+        turn:
+          type: integer
+          description: Lượt thi. Mặc định là 1 nếu không truyền
+          example: 1
+        startAt:
+          type: string
+          format: date-time
+          description: Thời gian bắt đầu thi
+          example: "2025-03-15T07:30:00"
+        endAt:
+          type: string
+          format: date-time
+          description: Thời gian kết thúc thi
+          example: "2025-03-15T09:30:00"
+        duration:
+          type: integer
+          description: Thời lượng làm bài tính bằng phút
+          example: 90
+        numQuestion:
+          type: integer
+          description: Số câu hỏi trong đề thi
+          example: 40
+
+    ErrorMessage:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Thông báo lỗi"
+
+paths:
+
+  # ─────────────────────────────────────────────
+  #  TEST ENDPOINTS
+  # ─────────────────────────────────────────────
+
+  /test:
+    post:
+      summary: Tạo đề thi mới
+      description: |
+        Tạo một đề thi mới và gắn vào một lớp học cụ thể.
+
+        **Điều kiện hợp lệ:**
+        - `classId` phải trỏ đến lớp học đang tồn tại trong hệ thống.
+        - `createBy` phải là user tồn tại và có `role = teacher` hoặc `admin`.
+        - `duration` và `numQuestion` là bắt buộc (NOT NULL trong DB).
+        - `turn` mặc định là `1` nếu không truyền.
+
+        > ⚠️ Hiện tại endpoint **không yêu cầu xác thực**.
+        > Khi production, sẽ yêu cầu Bearer Token + role `teacher` hoặc `admin`.
+      tags:
+        - Tests
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TestInput'
+            example:
+              name: "Kiểm tra giữa kỳ - CSDT K20A"
+              classId: 1
+              createBy: 1
+              turn: 1
+              startAt: "2025-03-15T07:30:00"
+              endAt: "2025-03-15T09:30:00"
+              duration: 90
+              numQuestion: 40
+      responses:
+        '200':
+          description: Tạo đề thi thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Success"
+                  data:
+                    $ref: '#/components/schemas/TestInput'
+              example:
+                message: "Success"
+                data:
+                  id: 11
+                  name: "Kiểm tra giữa kỳ - CSDT K20A"
+                  classId: 1
+                  createBy: 1
+                  turn: 1
+                  startAt: "2025-03-15T07:30:00"
+                  endAt: "2025-03-15T09:30:00"
+                  duration: 90
+                  numQuestion: 40
+        '400':
+          description: Dữ liệu đầu vào không hợp lệ hoặc lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+              examples:
+                class_not_found:
+                  summary: Lớp học không tồn tại
+                  value:
+                    message: "Class not found"
+                creator_not_valid:
+                  summary: Người tạo không có quyền
+                  value:
+                    message: "Only teacher or admin can create a test"
+                user_not_found:
+                  summary: Người tạo không tồn tại
+                  value:
+                    message: "User not found"
+
+    get:
+      summary: Lấy danh sách tất cả đề thi
+      description: |
+        Trả về toàn bộ danh sách đề thi trong hệ thống, sắp xếp theo `startAt DESC` (mới nhất trước).
+
+        > ⚠️ Hiện tại endpoint **không yêu cầu xác thực**.
+      tags:
+        - Tests
+      responses:
+        '200':
+          description: Lấy danh sách đề thi thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Success"
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TestObject'
+              example:
+                message: "Success"
+                data:
+                  - id: 1
+                    name: "Kiểm tra giữa kỳ - CSDT K20A"
+                    class_id: 1
+                    createBy: 1
+                    turn: 1
+                    startAt: "2025-03-15T07:30:00.000Z"
+                    endAt: "2025-03-15T09:30:00.000Z"
+                    duration: 90
+                    num_question: 40
+                  - id: 2
+                    name: "Kiểm tra cuối kỳ - CSDT K20A"
+                    class_id: 1
+                    createBy: 1
+                    turn: 1
+                    startAt: "2025-05-10T07:30:00.000Z"
+                    endAt: "2025-05-10T10:00:00.000Z"
+                    duration: 120
+                    num_question: 60
+        '400':
+          description: Lỗi truy xuất dữ liệu
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+
+  /test/{id}:
+    get:
+      summary: Lấy thông tin chi tiết một đề thi theo ID
+      description: |
+        Trả về toàn bộ thông tin của đề thi theo `id`.
+
+        - Nếu không tìm thấy đề thi với `id` đã cho, server trả về lỗi `400` kèm thông báo `"Test not found"`.
+
+        > ⚠️ Hiện tại endpoint **không yêu cầu xác thực**.
+      tags:
+        - Tests
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID của đề thi cần tra cứu
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Lấy thông tin đề thi thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Success"
+                  data:
+                    $ref: '#/components/schemas/TestObject'
+              example:
+                message: "Success"
+                data:
+                  id: 1
+                  name: "Kiểm tra giữa kỳ - CSDT K20A"
+                  class_id: 1
+                  createBy: 1
+                  turn: 1
+                  startAt: "2025-03-15T07:30:00.000Z"
+                  endAt: "2025-03-15T09:30:00.000Z"
+                  duration: 90
+                  num_question: 40
+        '400':
+          description: Không tìm thấy đề thi hoặc lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+              example:
+                message: "Test not found"
+
+    put:
+      summary: Cập nhật thông tin đề thi
+      description: |
+        Cập nhật thông tin của đề thi theo `id`.
+
+        **Các trường có thể cập nhật:** `name`, `classId`, `turn`, `startAt`, `endAt`, `duration`, `numQuestion`.
+
+        - Nếu `classId` được truyền vào, hệ thống sẽ validate lớp học tồn tại.
+        - Nếu không tìm thấy đề thi với `id` đã cho, server trả về lỗi `400` kèm thông báo `"Test not found"`.
+        - `createBy` **không được cập nhật** qua endpoint này (người tạo đề là cố định).
+
+        > ⚠️ Hiện tại endpoint **không yêu cầu xác thực**.
+        > Khi production, sẽ yêu cầu Bearer Token + role `teacher` hoặc `admin`.
+      tags:
+        - Tests
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID của đề thi cần cập nhật
+          schema:
+            type: integer
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - classId
+                - turn
+                - duration
+                - numQuestion
+              properties:
+                name:
+                  type: string
+                  description: Tên mới của đề thi
+                  example: "Kiểm tra giữa kỳ - CSDT K20A (Cập nhật)"
+                classId:
+                  type: integer
+                  description: ID lớp học mới
+                  example: 1
+                turn:
+                  type: integer
+                  description: Lượt thi mới
+                  example: 2
+                startAt:
+                  type: string
+                  format: date-time
+                  description: Thời gian bắt đầu mới
+                  example: "2025-03-20T07:30:00"
+                endAt:
+                  type: string
+                  format: date-time
+                  description: Thời gian kết thúc mới
+                  example: "2025-03-20T09:30:00"
+                duration:
+                  type: integer
+                  description: Thời lượng mới (phút)
+                  example: 90
+                numQuestion:
+                  type: integer
+                  description: Số câu hỏi mới
+                  example: 45
+            example:
+              name: "Kiểm tra giữa kỳ - CSDT K20A (Cập nhật)"
+              classId: 1
+              turn: 2
+              startAt: "2025-03-20T07:30:00"
+              endAt: "2025-03-20T09:30:00"
+              duration: 90
+              numQuestion: 45
+      responses:
+        '200':
+          description: Cập nhật đề thi thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Success"
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 1
+                      name:
+                        type: string
+                        example: "Kiểm tra giữa kỳ - CSDT K20A (Cập nhật)"
+                      classId:
+                        type: integer
+                        example: 1
+                      turn:
+                        type: integer
+                        example: 2
+                      startAt:
+                        type: string
+                        format: date-time
+                        example: "2025-03-20T07:30:00"
+                      endAt:
+                        type: string
+                        format: date-time
+                        example: "2025-03-20T09:30:00"
+                      duration:
+                        type: integer
+                        example: 90
+                      numQuestion:
+                        type: integer
+                        example: 45
+              example:
+                message: "Success"
+                data:
+                  id: 1
+                  name: "Kiểm tra giữa kỳ - CSDT K20A (Cập nhật)"
+                  classId: 1
+                  turn: 2
+                  startAt: "2025-03-20T07:30:00"
+                  endAt: "2025-03-20T09:30:00"
+                  duration: 90
+                  numQuestion: 45
+        '400':
+          description: Không tìm thấy đề thi hoặc lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+              examples:
+                not_found:
+                  summary: Không tìm thấy đề thi
+                  value:
+                    message: "Test not found"
+                class_not_found:
+                  summary: Lớp học không tồn tại
+                  value:
+                    message: "Class not found"
+
+    delete:
+      summary: Xóa đề thi
+      description: |
+        Xóa vĩnh viễn một đề thi khỏi hệ thống theo `id`.
+
+        - Nếu không tìm thấy đề thi với `id` đã cho, server trả về lỗi `400` kèm thông báo `"Test not found"`.
+
+        > ⚠️ Hiện tại endpoint **không yêu cầu xác thực**.
+        > Khi production, sẽ yêu cầu Bearer Token + role `teacher` hoặc `admin`.
+      tags:
+        - Tests
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID của đề thi cần xóa
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Xóa đề thi thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Success"
+              example:
+                message: "Success"
+        '400':
+          description: Không tìm thấy đề thi hoặc lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+              example:
+                message: "Test not found"
+
+  /test/class/{classId}:
+    get:
+      summary: Lấy danh sách đề thi theo lớp học
+      description: |
+        Trả về tất cả đề thi thuộc lớp học có `classId` tương ứng.
+
+        **Dữ liệu trả về cho mỗi đề thi:**
+        - `id`, `name`, `turn`, `startAt`, `endAt`, `duration`, `num_question`
+        - `createdByName` — Tên người tạo đề (JOIN từ bảng `user`)
+
+        **Lưu ý:**
+        - Validate lớp học tồn tại trước khi query.
+        - Nếu lớp không có đề thi nào, trả về mảng rỗng `[]`.
+        - Kết quả sắp xếp theo `startAt DESC`.
+
+        > ⚠️ Hiện tại endpoint **không yêu cầu xác thực**.
+      tags:
+        - Tests
+      parameters:
+        - name: classId
+          in: path
+          required: true
+          description: ID của lớp học cần lấy danh sách đề thi
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Lấy danh sách đề thi theo lớp thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Success"
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TestByClassItem'
+              example:
+                message: "Success"
+                data:
+                  - id: 2
+                    name: "Kiểm tra cuối kỳ - CSDT K20A"
+                    turn: 1
+                    startAt: "2025-05-10T07:30:00.000Z"
+                    endAt: "2025-05-10T10:00:00.000Z"
+                    duration: 120
+                    num_question: 60
+                    createdByName: "Nguyễn Văn An"
+                  - id: 1
+                    name: "Kiểm tra giữa kỳ - CSDT K20A"
+                    turn: 1
+                    startAt: "2025-03-15T07:30:00.000Z"
+                    endAt: "2025-03-15T09:30:00.000Z"
+                    duration: 90
+                    num_question: 40
+                    createdByName: "Nguyễn Văn An"
+        '400':
+          description: Lớp học không tồn tại hoặc lỗi truy xuất dữ liệu
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+              example:
+                message: "Class not found"
+
+  /test/creator/{creatorId}:
+    get:
+      summary: Lấy danh sách đề thi do một người tạo
+      description: |
+        Trả về tất cả đề thi được tạo bởi user có `creatorId` tương ứng.
+
+        **Dữ liệu trả về cho mỗi đề thi:**
+        - `id`, `name`, `class_id`, `turn`, `startAt`, `endAt`, `duration`, `num_question`
+        - `className` — Tên lớp học (JOIN từ bảng `class`)
+
+        **Lưu ý:**
+        - Validate user tồn tại trước khi query.
+        - Nếu người dùng chưa tạo đề nào, trả về mảng rỗng `[]`.
+        - Kết quả sắp xếp theo `startAt DESC`.
+
+        > ⚠️ Hiện tại endpoint **không yêu cầu xác thực**.
+      tags:
+        - Tests
+      parameters:
+        - name: creatorId
+          in: path
+          required: true
+          description: ID của người tạo đề thi
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Lấy danh sách đề thi theo người tạo thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Success"
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TestByCreatorItem'
+              example:
+                message: "Success"
+                data:
+                  - id: 10
+                    name: "Kiểm tra nhập môn - AI K22A"
+                    class_id: 6
+                    turn: 1
+                    startAt: "2025-05-20T07:30:00.000Z"
+                    endAt: "2025-05-20T09:00:00.000Z"
+                    duration: 75
+                    num_question: 35
+                    className: "AI-K22A"
+                  - id: 2
+                    name: "Kiểm tra cuối kỳ - CSDT K20A"
+                    class_id: 1
+                    turn: 1
+                    startAt: "2025-05-10T07:30:00.000Z"
+                    endAt: "2025-05-10T10:00:00.000Z"
+                    duration: 120
+                    num_question: 60
+                    className: "CSDT-K20A"
+        '400':
+          description: Người dùng không tồn tại hoặc lỗi truy xuất dữ liệu
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+              example:
+                message: "User not found"

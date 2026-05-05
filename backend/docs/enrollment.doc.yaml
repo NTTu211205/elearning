@@ -55,7 +55,7 @@ components:
 
     StudentInClass:
       type: object
-      description: Thông tin học sinh kèm điểm trung bình trong lớp
+      description: Thông tin học sinh kèm điểm trung bình và số bài thi đã hoàn thành trong lớp
       properties:
         id:
           type: integer
@@ -77,7 +77,12 @@ components:
           type: number
           format: float
           nullable: true
+          description: Điểm trung bình của học sinh trong lớp (null nếu chưa có)
           example: 8.5
+        totalExamsDone:
+          type: integer
+          description: Số lượng bài thi có status = 'DONE' mà học sinh đã hoàn thành trong lớp này
+          example: 2
 
     ClassOfStudent:
       type: object
@@ -333,10 +338,18 @@ paths:
     get:
       summary: Lấy danh sách học sinh của một lớp học
       description: |
-        Trả về danh sách học sinh đã đăng ký lớp `classId`, kèm thông tin cá nhân và `averageScore`.
+        Trả về danh sách học sinh đã đăng ký lớp `classId`, kèm thông tin cá nhân,
+        điểm trung bình và số bài thi đã hoàn thành trong lớp.
 
-        - Nếu lớp không tồn tại, trả về `400`.
-        - Nếu lớp chưa có học sinh nào, trả về mảng rỗng.
+        **Dữ liệu trả về cho mỗi học sinh:**
+        - `id`, `name`, `email`, `phone`, `dob` — Thông tin cá nhân
+        - `averageScore` — Điểm trung bình từ bảng `enrollment` (null nếu chưa có)
+        - `totalExamsDone` — Số bài thi có `status = 'DONE'` trong lớp này (COUNT từ `doexam` JOIN `test`)
+
+        **Lưu ý:**
+        - Nếu lớp không tồn tại, trả về `400 Class not found`.
+        - Nếu lớp chưa có học sinh nào, trả về mảng rỗng `[]`.
+        - `totalExamsDone` chỉ đếm bài thi thuộc **lớp này** với trạng thái `DONE`, không tính `DOING` hay `PENDING`.
       tags:
         - Enrollment
       parameters:
@@ -346,7 +359,7 @@ paths:
           description: ID của lớp học
           schema:
             type: integer
-          example: 3
+          example: 1
       responses:
         '200':
           description: Lấy danh sách thành công
@@ -365,18 +378,27 @@ paths:
               example:
                 message: "Success"
                 data:
-                  - id: 10
-                    name: "Nguyễn Văn A"
-                    email: "a@student.tdtu.edu.vn"
-                    phone: "0901234567"
-                    dob: "2005-01-15"
+                  - id: 4
+                    name: "Phạm Thị Dung"
+                    email: "phamthidung@gmail.com"
+                    phone: "0912222001"
+                    dob: "1992-05-18"
                     averageScore: 8.5
-                  - id: 11
-                    name: "Trần Thị B"
-                    email: "b@student.tdtu.edu.vn"
-                    phone: "0907654321"
-                    dob: "2005-03-20"
-                    averageScore: null
+                    totalExamsDone: 2
+                  - id: 5
+                    name: "Hoàng Văn Em"
+                    email: "hoangvanem@gmail.com"
+                    phone: "0912222002"
+                    dob: "2003-09-30"
+                    averageScore: 7.2
+                    totalExamsDone: 1
+                  - id: 6
+                    name: "Vũ Thị Phương"
+                    email: "vuthiphuong@gmail.com"
+                    phone: "0912222003"
+                    dob: "2002-12-14"
+                    averageScore: 9.0
+                    totalExamsDone: 2
         '400':
           description: Không tìm thấy lớp học
           content:

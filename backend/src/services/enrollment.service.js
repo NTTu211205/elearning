@@ -92,18 +92,31 @@ const getAllEnrollments = async () => {
 
 /**
  * Lấy danh sách students đã đăng ký một lớp.
- * Validate class qua classService, sau đó JOIN trên bảng enrollment.
+ * Trả về thông tin học sinh kèm điểm trung bình và số bài thi đã hoàn thành.
+ * Validate class qua classService, sau đó JOIN enrollment + doexam + test.
  */
 const getStudentsByClass = async (classId) => {
     // Validate class qua classService — throw nếu không tồn tại
     await classService.getClassById(classId);
 
     const [result] = await db.execute(
-        `SELECT u.id, u.name, u.email, u.phone, u.dob, e.averageScore
+        `SELECT
+             u.id,
+             u.name,
+             u.email,
+             u.phone,
+             u.dob,
+             e.averageScore,
+             COUNT(de.id) AS totalExamsDone
          FROM enrollment e
          JOIN user u ON e.student_id = u.id
-         WHERE e.class_id = ?`,
-        [classId]
+         LEFT JOIN doexam de
+             ON de.student_id = u.id
+             AND de.status = 'DONE'
+             AND de.test_id IN (SELECT id FROM test WHERE class_id = ?)
+         WHERE e.class_id = ?
+         GROUP BY u.id, u.name, u.email, u.phone, u.dob, e.averageScore`,
+        [classId, classId]
     );
     return result;
 };
