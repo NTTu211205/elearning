@@ -68,8 +68,7 @@ const updateUser = async(id, userData) => {
 
 // get user by id
 const getUserById = async(id) => {
-    console.log("User service: ", id);
-    const [result] = await db.execute('SELECT name, dob, phone, email, role FROM user WHERE id = ?', [id]);
+    const [result] = await db.execute('SELECT name, dob, phone, email, role FROM user WHERE id = ? AND status = 1', [id]);
 
     if (result.length === 0) {
         throw new Error("User not exist");
@@ -77,4 +76,14 @@ const getUserById = async(id) => {
     return result[0];
 }
 
-module.exports = {createUser, getAllUser, deleteUser, updateUser, getUserById, getUserFollowingStatus};
+const getTeacherById = async (id) => {
+    const [result] = await db.execute('SELECT name, dob, phone, email, role FROM user WHERE id = ? AND status = 1 and role = "teacher"', [id]);
+
+    if (result.length === 0) {
+        throw new Error('Teacher not found');
+    }
+
+    return result[0];
+}
+
+module.exports = {createUser, getAllUser, deleteUser, updateUser, getUserById, getUserFollowingStatus, getTeacherById};

@@ -1,0 +1,625 @@
+openapi: 3.0.3
+info:
+  title: E-Learning Backend API — Enrollment
+  description: |
+    API tài liệu cho các endpoint quản lý **đăng ký lớp học (Enrollment)** trong hệ thống E-Learning.
+
+    ## Cấu trúc bảng `enrollment`
+    | Cột | Kiểu | Mô tả |
+    |-----|------|-------|
+    | `student_id` | INT (PK, FK → user.id) | ID học sinh đăng ký |
+    | `class_id` | INT (PK, FK → class.id) | ID lớp học |
+    | `averageScore` | FLOAT (nullable) | Điểm trung bình của học sinh trong lớp |
+
+    Khoá chính là tổ hợp `(student_id, class_id)` — mỗi học sinh chỉ đăng ký một lớp một lần.
+
+    ## Lưu ý
+    Các route hiện tại **chưa áp dụng middleware xác thực**.
+  version: 1.0.0
+  contact:
+    name: Nguyễn Thành Tú
+
+servers:
+  - url: http://localhost:5000
+    description: Local development server
+
+tags:
+  - name: Enrollment
+    description: Quản lý đăng ký lớp học của học sinh
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    EnrollmentRecord:
+      type: object
+      properties:
+        student_id:
+          type: integer
+          description: ID của học sinh
+          example: 10
+        class_id:
+          type: integer
+          description: ID của lớp học
+          example: 3
+        averageScore:
+          type: number
+          format: float
+          nullable: true
+          description: Điểm trung bình của học sinh trong lớp (null nếu chưa có)
+          example: 8.5
+
+    StudentInClass:
+      type: object
+      description: Thông tin học sinh kèm điểm trung bình trong lớp
+      properties:
+        id:
+          type: integer
+          example: 10
+        name:
+          type: string
+          example: "Nguyễn Văn A"
+        email:
+          type: string
+          example: "a@student.tdtu.edu.vn"
+        phone:
+          type: string
+          example: "0901234567"
+        dob:
+          type: string
+          format: date
+          example: "2005-01-15"
+        averageScore:
+          type: number
+          format: float
+          nullable: true
+          example: 8.5
+
+    ClassOfStudent:
+      type: object
+      description: Thông tin lớp học mà một student đã đăng ký
+      properties:
+        id:
+          type: integer
+          example: 3
+        subject_id:
+          type: integer
+          example: 2
+        teacher_id:
+          type: integer
+          example: 5
+        quantity:
+          type: integer
+          example: 40
+        averageScore:
+          type: number
+          format: float
+          nullable: true
+          example: 7.0
+
+    BulkEnrollResult:
+      type: object
+      properties:
+        enrolled:
+          type: array
+          description: Danh sách studentId đã được thêm thành công
+          items:
+            type: integer
+          example: [10, 11, 12]
+        failed:
+          type: array
+          description: Danh sách studentId thất bại kèm lý do
+          items:
+            type: object
+            properties:
+              studentId:
+                type: integer
+                example: 13
+              reason:
+                type: string
+                example: "Already enrolled"
+
+    ErrorMessage:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Thông báo lỗi"
+
+paths:
+
+  # ─────────────────────────────────────────────
+  #  CREATE
+  # ─────────────────────────────────────────────
+
+  /enrollment:
+    post:
+      summary: Đăng ký một học sinh vào một lớp học
+      description: |
+        Thêm một học sinh vào một lớp học.
+
+        **Điều kiện hợp lệ:**
+        - `studentId` phải là user tồn tại, có `status = 1` và `role = 'student'`.
+        - `classId` phải là lớp học tồn tại.
+        - Học sinh chưa được đăng ký lớp này trước đó.
+
+        Nếu bất kỳ điều kiện nào không thoả, server trả về `400`.
+      tags:
+        - Enrollment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - studentId
+                - classId
+              properties:
+                studentId:
+                  type: integer
+                  description: ID của học sinh cần đăng ký
+                  example: 10
+                classId:
+                  type: integer
+                  description: ID của lớp học
+                  example: 3
+            example:
+              studentId: 10
+              classId: 3
+      responses:
+        '200':
+          description: Đăng ký thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Success"
+                  data:
+                    type: object
+                    properties:
+                      studentId:
+                        type: integer
+                        example: 10
+                      classId:
+                        type: integer
+                        example: 3
+              example:
+                message: "Success"
+                data:
+                  studentId: 10
+                  classId: 3
+        '400':
+          description: Dữ liệu không hợp lệ hoặc vi phạm ràng buộc
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+              examples:
+                student_invalid:
+                  summary: Student không tồn tại hoặc không có role student
+                  value:
+                    message: "Student with id 10 not found or not valid"
+                class_not_found:
+                  summary: Lớp học không tồn tại
+                  value:
+                    message: "Class not found"
+                already_enrolled:
+                  summary: Học sinh đã đăng ký lớp này rồi
+                  value:
+                    message: "Student 10 is already enrolled in this class"
+
+    get:
+      summary: Lấy toàn bộ danh sách đăng ký
+      description: |
+        Trả về tất cả bản ghi trong bảng `enrollment` (toàn bộ hệ thống).
+        Thường dùng cho mục đích quản trị.
+      tags:
+        - Enrollment
+      responses:
+        '200':
+          description: Lấy danh sách thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Success"
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/EnrollmentRecord'
+              example:
+                message: "Success"
+                data:
+                  - student_id: 10
+                    class_id: 3
+                    averageScore: 8.5
+                  - student_id: 11
+                    class_id: 3
+                    averageScore: null
+        '400':
+          description: Lỗi truy xuất dữ liệu
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+
+  /enrollment/bulk:
+    post:
+      summary: Thêm danh sách học sinh vào một lớp học
+      description: |
+        Đăng ký **nhiều học sinh cùng lúc** vào một lớp học.
+
+        - Mỗi `studentId` trong mảng được xử lý độc lập.
+        - Những `studentId` hợp lệ và chưa đăng ký sẽ được thêm vào → xuất hiện trong `enrolled`.
+        - Những `studentId` không hợp lệ (không tồn tại / sai role / đã đăng ký) sẽ bị bỏ qua → xuất hiện trong `failed` kèm lý do.
+        - Server **luôn trả về `200`** kèm báo cáo chi tiết, trừ khi `classId` không tồn tại hoặc `studentIds` không phải mảng.
+
+        **Đây là endpoint chính để đăng ký hàng loạt học sinh vào một lớp.**
+      tags:
+        - Enrollment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - studentIds
+                - classId
+              properties:
+                studentIds:
+                  type: array
+                  description: Danh sách ID của các học sinh cần đăng ký (phải có ít nhất 1 phần tử)
+                  items:
+                    type: integer
+                  example: [10, 11, 12, 13]
+                classId:
+                  type: integer
+                  description: ID của lớp học
+                  example: 3
+            example:
+              studentIds: [10, 11, 12, 13]
+              classId: 3
+      responses:
+        '200':
+          description: Xử lý hoàn tất (kể cả khi một số học sinh thất bại)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Success"
+                  data:
+                    $ref: '#/components/schemas/BulkEnrollResult'
+              example:
+                message: "Success"
+                data:
+                  enrolled: [10, 11, 12]
+                  failed:
+                    - studentId: 13
+                      reason: "Already enrolled"
+        '400':
+          description: Lỗi đầu vào — classId không tồn tại hoặc studentIds không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+              examples:
+                class_not_found:
+                  value:
+                    message: "Class not found"
+                invalid_array:
+                  value:
+                    message: "studentIds must be a non-empty array"
+
+  # ─────────────────────────────────────────────
+  #  READ
+  # ─────────────────────────────────────────────
+
+  /enrollment/class/{classId}:
+    get:
+      summary: Lấy danh sách học sinh của một lớp học
+      description: |
+        Trả về danh sách học sinh đã đăng ký lớp `classId`, kèm thông tin cá nhân và `averageScore`.
+
+        - Nếu lớp không tồn tại, trả về `400`.
+        - Nếu lớp chưa có học sinh nào, trả về mảng rỗng.
+      tags:
+        - Enrollment
+      parameters:
+        - name: classId
+          in: path
+          required: true
+          description: ID của lớp học
+          schema:
+            type: integer
+          example: 3
+      responses:
+        '200':
+          description: Lấy danh sách thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Success"
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StudentInClass'
+              example:
+                message: "Success"
+                data:
+                  - id: 10
+                    name: "Nguyễn Văn A"
+                    email: "a@student.tdtu.edu.vn"
+                    phone: "0901234567"
+                    dob: "2005-01-15"
+                    averageScore: 8.5
+                  - id: 11
+                    name: "Trần Thị B"
+                    email: "b@student.tdtu.edu.vn"
+                    phone: "0907654321"
+                    dob: "2005-03-20"
+                    averageScore: null
+        '400':
+          description: Không tìm thấy lớp học
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+              example:
+                message: "Class not found"
+
+  /enrollment/student/{studentId}:
+    get:
+      summary: Lấy danh sách lớp học của một học sinh
+      description: |
+        Trả về danh sách các lớp học mà học sinh `studentId` đã đăng ký, kèm `averageScore` trong từng lớp.
+
+        - Nếu học sinh không tồn tại, trả về `400`.
+        - Nếu học sinh chưa đăng ký lớp nào, trả về mảng rỗng.
+      tags:
+        - Enrollment
+      parameters:
+        - name: studentId
+          in: path
+          required: true
+          description: ID của học sinh
+          schema:
+            type: integer
+          example: 10
+      responses:
+        '200':
+          description: Lấy danh sách thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Success"
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ClassOfStudent'
+              example:
+                message: "Success"
+                data:
+                  - id: 3
+                    subject_id: 2
+                    teacher_id: 5
+                    quantity: 40
+                    averageScore: 8.5
+        '400':
+          description: Không tìm thấy học sinh
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+              example:
+                message: "Student not found"
+
+  # ─────────────────────────────────────────────
+  #  UPDATE
+  # ─────────────────────────────────────────────
+
+  /enrollment/{studentId}/{classId}:
+    put:
+      summary: Cập nhật điểm trung bình của học sinh trong lớp
+      description: |
+        Cập nhật trường `averageScore` của bản ghi `enrollment` xác định bởi `(studentId, classId)`.
+
+        - Nếu không tìm thấy bản ghi, trả về `400`.
+      tags:
+        - Enrollment
+      parameters:
+        - name: studentId
+          in: path
+          required: true
+          description: ID của học sinh
+          schema:
+            type: integer
+          example: 10
+        - name: classId
+          in: path
+          required: true
+          description: ID của lớp học
+          schema:
+            type: integer
+          example: 3
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - averageScore
+              properties:
+                averageScore:
+                  type: number
+                  format: float
+                  description: Điểm trung bình mới (thang 10)
+                  example: 8.5
+            example:
+              averageScore: 8.5
+      responses:
+        '200':
+          description: Cập nhật thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Success"
+                  data:
+                    type: object
+                    properties:
+                      studentId:
+                        type: integer
+                        example: 10
+                      classId:
+                        type: integer
+                        example: 3
+                      averageScore:
+                        type: number
+                        example: 8.5
+              example:
+                message: "Success"
+                data:
+                  studentId: 10
+                  classId: 3
+                  averageScore: 8.5
+        '400':
+          description: Không tìm thấy bản ghi đăng ký
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+              example:
+                message: "Enrollment record not found"
+
+    # ─────────────────────────────────────────────
+    #  DELETE (single)
+    # ─────────────────────────────────────────────
+
+    delete:
+      summary: Xóa một học sinh khỏi một lớp học
+      description: |
+        Xóa bản ghi `enrollment` xác định bởi `(studentId, classId)`.
+
+        - Nếu không tìm thấy bản ghi, trả về `400`.
+      tags:
+        - Enrollment
+      parameters:
+        - name: studentId
+          in: path
+          required: true
+          description: ID của học sinh
+          schema:
+            type: integer
+          example: 10
+        - name: classId
+          in: path
+          required: true
+          description: ID của lớp học
+          schema:
+            type: integer
+          example: 3
+      responses:
+        '200':
+          description: Xóa thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Success"
+                  data:
+                    type: boolean
+                    example: true
+              example:
+                message: "Success"
+                data: true
+        '400':
+          description: Không tìm thấy bản ghi đăng ký
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+              example:
+                message: "Enrollment record not found"
+
+  # ─────────────────────────────────────────────
+  #  DELETE (all students of a class)
+  # ─────────────────────────────────────────────
+
+  /enrollment/class/{classId}/students:
+    delete:
+      summary: Xóa toàn bộ học sinh khỏi một lớp học
+      description: |
+        Xóa tất cả bản ghi `enrollment` có `class_id` tương ứng.
+
+        - Nếu lớp không tồn tại, trả về `400`.
+        - Trả về số bản ghi đã xóa (`deletedCount`).
+      tags:
+        - Enrollment
+      parameters:
+        - name: classId
+          in: path
+          required: true
+          description: ID của lớp học cần xóa toàn bộ học sinh
+          schema:
+            type: integer
+          example: 3
+      responses:
+        '200':
+          description: Xóa thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Success"
+                  data:
+                    type: object
+                    properties:
+                      deletedCount:
+                        type: integer
+                        description: Số học sinh đã bị xóa khỏi lớp
+                        example: 5
+              example:
+                message: "Success"
+                data:
+                  deletedCount: 5
+        '400':
+          description: Không tìm thấy lớp học
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+              example:
+                message: "Class not found"

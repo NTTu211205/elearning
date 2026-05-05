@@ -9,7 +9,7 @@ const createSubject = async(name, lessons) => {
 
 // get subject by id
 const getSubject = async(id) => {
-    const [result] = await db.execute('SELECT * FROM subject WHERE id = ?', [id]);
+    const [result] = await db.execute('SELECT * FROM subject WHERE id = ? AND status = 1', [id]);
 
     if (result.length === 0) {
         throw new Error('Class not found');

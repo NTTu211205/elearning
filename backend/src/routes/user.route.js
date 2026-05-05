@@ -15,7 +15,7 @@ router.post('/',userController.addUser);
 router.delete('/:id', userController.deleteUser);
 router.put('/:id', userController.updateUser);
 
-router.get('/', userController.getAllUser)
+router.get('/', userController.getAllUser);
 router.get('/profile/', verifyToken, userController.getUserProfile);
 router.get('/:id', userController.getUserById);
 

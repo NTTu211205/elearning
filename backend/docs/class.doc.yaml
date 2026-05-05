@@ -36,18 +36,28 @@ components:
           type: integer
           description: ID tự tăng của lớp học trong cơ sở dữ liệu
           example: 1
-        subjectId:
+        subject_id:
           type: integer
           description: ID của môn học được giảng dạy trong lớp
           example: 2
-        teacherId:
+        teacher_id:
           type: integer
-          description: ID của giáo viên phụ trách lớp (phải có role = teacher)
+          description: ID của giáo viên phụ trách lớp
           example: 5
         quantity:
           type: integer
           description: Sĩ số tối đa của lớp học
           example: 40
+        createdAt:
+          type: string
+          format: date-time
+          description: Thời điểm tạo lớp học
+          example: "2026-04-27T07:00:00.000Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Thời điểm cập nhật gần nhất
+          example: "2026-04-27T07:00:00.000Z"
 
     ClassInput:
       type: object
@@ -134,9 +144,11 @@ paths:
                 message: "Success"
                 data:
                   id: 1
-                  subjectId: 2
-                  teacherId: 5
+                  subject_id: 2
+                  teacher_id: 5
                   quantity: 40
+                  createdAt: "2026-04-27T07:00:00.000Z"
+                  updatedAt: "2026-04-27T07:00:00.000Z"
         '400':
           description: Dữ liệu đầu vào không hợp lệ hoặc lỗi hệ thống
           content:
@@ -156,3 +168,301 @@ paths:
                   summary: Lỗi database
                   value:
                     message: "ER_NO_REFERENCED_ROW_2: Cannot add or update a child row..."
+    get:
+      summary: Lấy danh sách tất cả lớp học
+      description: |
+        Trả về toàn bộ danh sách lớp học trong hệ thống, bao gồm tất cả các trường
+        được lưu trong bảng `class` (`id`, `subject_id`, `teacher_id`, `quantity`, `createdAt`, `updatedAt`).
+
+        > ⚠️ Hiện tại endpoint **không yêu cầu xác thực**.
+      tags:
+        - Classes
+      responses:
+        '200':
+          description: Lấy danh sách lớp học thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Success"
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ClassObject'
+              example:
+                message: "Success"
+                data:
+                  - id: 1
+                    subject_id: 2
+                    teacher_id: 5
+                    quantity: 40
+                    createdAt: "2026-04-27T07:00:00.000Z"
+                    updatedAt: "2026-04-27T07:00:00.000Z"
+                  - id: 2
+                    subject_id: 1
+                    teacher_id: 3
+                    quantity: 35
+                    createdAt: "2026-04-27T08:00:00.000Z"
+                    updatedAt: "2026-04-27T08:00:00.000Z"
+        '400':
+          description: Lỗi truy xuất dữ liệu từ database
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+
+  /class/{id}:
+    get:
+      summary: Lấy thông tin chi tiết một lớp học theo ID
+      description: |
+        Trả về toàn bộ thông tin của một lớp học dựa theo `id`.
+
+        - Nếu không tìm thấy lớp học với `id` đã cho, server trả về lỗi `400` kèm thông báo `"Class not found"`.
+
+        > ⚠️ Hiện tại endpoint **không yêu cầu xác thực**.
+      tags:
+        - Classes
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID của lớp học cần tra cứu
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Lấy thông tin lớp học thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Success"
+                  data:
+                    $ref: '#/components/schemas/ClassObject'
+              example:
+                message: "Success"
+                data:
+                  id: 1
+                  subject_id: 2
+                  teacher_id: 5
+                  quantity: 40
+                  createdAt: "2026-04-27T07:00:00.000Z"
+                  updatedAt: "2026-04-27T07:00:00.000Z"
+        '400':
+          description: Không tìm thấy lớp học hoặc lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+              example:
+                message: "Class not found"
+
+    put:
+      summary: Cập nhật thông tin lớp học
+      description: |
+        Cập nhật thông tin của lớp học theo `id`, bao gồm giáo viên phụ trách, môn học và sĩ số.
+
+        **Các trường có thể cập nhật:** `teacherId`, `subjectId`, `quantity`.
+
+        - Nếu không tìm thấy lớp học với `id` đã cho (query trả về `affectedRows = 0`),
+          server trả về lỗi `400` kèm thông báo `"Class not found"`.
+
+        > ⚠️ Hiện tại endpoint **không yêu cầu xác thực**.
+        > Khi production, sẽ yêu cầu Bearer Token + role `admin`.
+      tags:
+        - Classes
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID của lớp học cần cập nhật
+          schema:
+            type: integer
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - teacherId
+                - subjectId
+                - quantity
+              properties:
+                teacherId:
+                  type: integer
+                  description: ID giáo viên mới phụ trách lớp
+                  example: 7
+                subjectId:
+                  type: integer
+                  description: ID môn học mới của lớp
+                  example: 3
+                quantity:
+                  type: integer
+                  description: Sĩ số mới của lớp
+                  example: 45
+            example:
+              teacherId: 7
+              subjectId: 3
+              quantity: 45
+      responses:
+        '200':
+          description: Cập nhật lớp học thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Success"
+                  data:
+                    type: object
+                    properties:
+                      classId:
+                        type: integer
+                        description: ID lớp học vừa cập nhật
+                        example: 1
+                      teacherId:
+                        type: integer
+                        example: 7
+                      subjectId:
+                        type: integer
+                        example: 3
+                      quantity:
+                        type: integer
+                        example: 45
+              example:
+                message: "Success"
+                data:
+                  classId: 1
+                  teacherId: 7
+                  subjectId: 3
+                  quantity: 45
+        '400':
+          description: Không tìm thấy lớp học hoặc lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+              example:
+                message: "Class not found"
+
+
+  /class/teacher/{teacherId}:
+    get:
+      summary: Lấy danh sách lớp học theo giáo viên
+      description: |
+        Trả về tất cả lớp học được phụ trách bởi giáo viên có `teacherId` tương ứng.
+
+        - Nếu giáo viên không có lớp nào, trả về mảng rỗng `[]`.
+        - Không kiểm tra sự tồn tại hay trạng thái của giáo viên — chỉ lọc theo `teacher_id` trong bảng `class`.
+
+        > ⚠️ Hiện tại endpoint **không yêu cầu xác thực**.
+        > Khi production, sẽ yêu cầu Bearer Token (bất kỳ role nào).
+      tags:
+        - Classes
+      parameters:
+        - name: teacherId
+          in: path
+          required: true
+          description: ID của giáo viên cần tra cứu danh sách lớp
+          schema:
+            type: integer
+          example: 5
+      responses:
+        '200':
+          description: Lấy danh sách lớp học của giáo viên thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Success"
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ClassObject'
+              example:
+                message: "Success"
+                data:
+                  - id: 1
+                    subject_id: 2
+                    teacher_id: 5
+                    quantity: 40
+                    createdAt: "2026-04-27T07:00:00.000Z"
+                    updatedAt: "2026-04-27T07:00:00.000Z"
+        '400':
+          description: Lỗi truy xuất dữ liệu
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+
+  /class/subject/{subjectId}:
+    get:
+      summary: Lấy danh sách lớp học theo môn học
+      description: |
+        Trả về tất cả lớp học thuộc môn học có `subjectId` tương ứng.
+
+        - Nếu môn học không có lớp nào, trả về mảng rỗng `[]`.
+        - Không kiểm tra sự tồn tại hay trạng thái của môn học — chỉ lọc theo `subject_id` trong bảng `class`.
+
+        > ⚠️ Hiện tại endpoint **không yêu cầu xác thực**.
+        > Khi production, sẽ yêu cầu Bearer Token (bất kỳ role nào).
+      tags:
+        - Classes
+      parameters:
+        - name: subjectId
+          in: path
+          required: true
+          description: ID của môn học cần tra cứu danh sách lớp
+          schema:
+            type: integer
+          example: 2
+      responses:
+        '200':
+          description: Lấy danh sách lớp học của môn học thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Success"
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ClassObject'
+              example:
+                message: "Success"
+                data:
+                  - id: 1
+                    subject_id: 2
+                    teacher_id: 5
+                    quantity: 40
+                    createdAt: "2026-04-27T07:00:00.000Z"
+                    updatedAt: "2026-04-27T07:00:00.000Z"
+                  - id: 3
+                    subject_id: 2
+                    teacher_id: 7
+                    quantity: 30
+                    createdAt: "2026-04-27T09:00:00.000Z"
+                    updatedAt: "2026-04-27T09:00:00.000Z"
+        '400':
+          description: Lỗi truy xuất dữ liệu
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
