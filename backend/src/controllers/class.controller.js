@@ -2,9 +2,9 @@ const classService = require('../services/class.service');
 
 const addClass = async (req, res) => {
     try {
-        const {subjectId, teacherId, quantity} = req.body;
+        const {subjectId, teacherId, quantity, name, status} = req.body;
 
-        const result = await classService.createClass({subjectId, teacherId, quantity});
+        const result = await classService.createClass({subjectId, teacherId, quantity, name, status});
 
         res.status(200).json({
             message: 'Success',
@@ -53,7 +53,7 @@ const getClassBySubject = async (req, res) => {
         const {subjectId} = req.params;
         const result = await classService.getClassBySubjectId(subjectId);
 
-        res.status(400).json({
+        res.status(200).json({
             message: 'Success',
             data: result
         });
@@ -79,9 +79,9 @@ const getClass = async (req, res) => {
 const update = async (req, res) => {
     try {
         const {id} = req.params;
-        const {teacherId, subjectId, quantity} = req.body;
+        const {teacherId, subjectId, quantity, name, status} = req.body;
 
-        const result = await classService.updateClass({id, teacherId, subjectId, quantity});
+        const result = await classService.updateClass({classId: id, teacherId, subjectId, quantity, name, status});
 
         res.status(200).json({
             message: 'Success',

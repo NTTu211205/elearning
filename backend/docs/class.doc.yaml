@@ -48,6 +48,15 @@ components:
           type: integer
           description: Sĩ số tối đa của lớp học
           example: 40
+        name:
+          type: string
+          description: Tên lớp học
+          example: "CSDT-K20A"
+        status:
+          type: string
+          enum: [active, ended]
+          description: Trạng thái lớp học
+          example: "active"
         createdAt:
           type: string
           format: date-time
@@ -65,6 +74,7 @@ components:
         - subjectId
         - teacherId
         - quantity
+        - name
       properties:
         subjectId:
           type: integer
@@ -78,6 +88,50 @@ components:
           type: integer
           description: Sĩ số tối đa của lớp
           example: 40
+        name:
+          type: string
+          description: Tên lớp học
+          example: "CSDT-K20A"
+        status:
+          type: string
+          enum: [active, ended]
+          description: Trạng thái lớp học. Mặc định là 'active' nếu không truyền
+          example: "active"
+
+    ClassTeacherItem:
+      type: object
+      description: Schema dành riêng cho response của GET /class/teacher/{teacherId}
+      properties:
+        id:
+          type: integer
+          description: ID lớp học
+          example: 1
+        className:
+          type: string
+          description: Tên lớp học
+          example: "CSDT-K20A"
+        subjectName:
+          type: string
+          description: Tên môn học
+          example: "Cơ sở dữ liệu"
+        totalStudents:
+          type: integer
+          description: Số học sinh đang ghi danh vào lớp
+          example: 25
+        totalTests:
+          type: integer
+          description: Số đề thi thuộc lớp học
+          example: 2
+        status:
+          type: string
+          enum: [active, ended]
+          description: Trạng thái lớp học
+          example: "active"
+        createdAt:
+          type: string
+          format: date-time
+          description: Ngày tạo lớp
+          example: "2025-02-10T07:00:00.000Z"
 
     SuccessMessage:
       type: object
@@ -108,6 +162,8 @@ paths:
         **Điều kiện hợp lệ:**
         - `subjectId` phải trỏ đến môn học tồn tại và có `status = 1` (đang hoạt động).
         - `teacherId` phải trỏ đến người dùng tồn tại, có `status = 1`, và có `role = teacher`.
+        - `name` là bắt buộc — tên định danh của lớp học.
+        - `status` không bắt buộc, mặc định là `active` nếu không truyền.
         - Nếu môn học hoặc giáo viên không hợp lệ, server trả về lỗi `400`.
 
         **Dữ liệu trả về:**
@@ -127,6 +183,8 @@ paths:
               subjectId: 2
               teacherId: 5
               quantity: 40
+              name: "CSDT-K20A"
+              status: "active"
       responses:
         '200':
           description: Tạo lớp học thành công
@@ -144,11 +202,11 @@ paths:
                 message: "Success"
                 data:
                   id: 1
-                  subject_id: 2
-                  teacher_id: 5
+                  subjectId: 2
+                  teacherId: 5
                   quantity: 40
-                  createdAt: "2026-04-27T07:00:00.000Z"
-                  updatedAt: "2026-04-27T07:00:00.000Z"
+                  name: "CSDT-K20A"
+                  status: "active"
         '400':
           description: Dữ liệu đầu vào không hợp lệ hoặc lỗi hệ thống
           content:
@@ -267,9 +325,9 @@ paths:
     put:
       summary: Cập nhật thông tin lớp học
       description: |
-        Cập nhật thông tin của lớp học theo `id`, bao gồm giáo viên phụ trách, môn học và sĩ số.
+        Cập nhật thông tin của lớp học theo `id`.
 
-        **Các trường có thể cập nhật:** `teacherId`, `subjectId`, `quantity`.
+        **Các trường có thể cập nhật:** `teacherId`, `subjectId`, `quantity`, `name`, `status`.
 
         - Nếu không tìm thấy lớp học với `id` đã cho (query trả về `affectedRows = 0`),
           server trả về lỗi `400` kèm thông báo `"Class not found"`.
@@ -296,6 +354,8 @@ paths:
                 - teacherId
                 - subjectId
                 - quantity
+                - name
+                - status
               properties:
                 teacherId:
                   type: integer
@@ -309,10 +369,21 @@ paths:
                   type: integer
                   description: Sĩ số mới của lớp
                   example: 45
+                name:
+                  type: string
+                  description: Tên mới của lớp học
+                  example: "CSDT-K20A-Updated"
+                status:
+                  type: string
+                  enum: [active, ended]
+                  description: Trạng thái mới của lớp học
+                  example: "active"
             example:
               teacherId: 7
               subjectId: 3
               quantity: 45
+              name: "CSDT-K20A-Updated"
+              status: "active"
       responses:
         '200':
           description: Cập nhật lớp học thành công
@@ -340,6 +411,12 @@ paths:
                       quantity:
                         type: integer
                         example: 45
+                      name:
+                        type: string
+                        example: "CSDT-K20A-Updated"
+                      status:
+                        type: string
+                        example: "active"
               example:
                 message: "Success"
                 data:
@@ -347,6 +424,8 @@ paths:
                   teacherId: 7
                   subjectId: 3
                   quantity: 45
+                  name: "CSDT-K20A-Updated"
+                  status: "active"
         '400':
           description: Không tìm thấy lớp học hoặc lỗi hệ thống
           content:
@@ -361,10 +440,21 @@ paths:
     get:
       summary: Lấy danh sách lớp học theo giáo viên
       description: |
-        Trả về tất cả lớp học được phụ trách bởi giáo viên có `teacherId` tương ứng.
+        Trả về tất cả lớp học được phụ trách bởi giáo viên có `teacherId` tương ứng,
+        kèm theo thông tin tổng hợp từ các bảng liên quan.
 
+        **Dữ liệu trả về cho mỗi lớp:**
+        - `className` — Tên lớp học
+        - `subjectName` — Tên môn học (JOIN với bảng `subject`)
+        - `totalStudents` — Số học sinh đang ghi danh (COUNT từ bảng `enrollment`)
+        - `totalTests` — Số đề thi thuộc lớp (COUNT từ bảng `test`)
+        - `status` — Trạng thái lớp (`active` / `ended`)
+        - `createdAt` — Ngày tạo lớp
+
+        **Lưu ý:**
         - Nếu giáo viên không có lớp nào, trả về mảng rỗng `[]`.
         - Không kiểm tra sự tồn tại hay trạng thái của giáo viên — chỉ lọc theo `teacher_id` trong bảng `class`.
+        - Kết quả được sắp xếp theo `createdAt DESC` (lớp mới nhất lên đầu).
 
         > ⚠️ Hiện tại endpoint **không yêu cầu xác thực**.
         > Khi production, sẽ yêu cầu Bearer Token (bất kỳ role nào).
@@ -377,7 +467,7 @@ paths:
           description: ID của giáo viên cần tra cứu danh sách lớp
           schema:
             type: integer
-          example: 5
+          example: 1
       responses:
         '200':
           description: Lấy danh sách lớp học của giáo viên thành công
@@ -392,16 +482,24 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: '#/components/schemas/ClassObject'
+                      $ref: '#/components/schemas/ClassTeacherItem'
               example:
                 message: "Success"
                 data:
                   - id: 1
-                    subject_id: 2
-                    teacher_id: 5
-                    quantity: 40
-                    createdAt: "2026-04-27T07:00:00.000Z"
-                    updatedAt: "2026-04-27T07:00:00.000Z"
+                    className: "CSDT-K20A"
+                    subjectName: "Cơ sở dữ liệu"
+                    totalStudents: 25
+                    totalTests: 2
+                    status: "active"
+                    createdAt: "2025-02-10T07:00:00.000Z"
+                  - id: 2
+                    className: "CSDT-K20B"
+                    subjectName: "Cơ sở dữ liệu"
+                    totalStudents: 18
+                    totalTests: 1
+                    status: "ended"
+                    createdAt: "2025-02-10T07:10:00.000Z"
         '400':
           description: Lỗi truy xuất dữ liệu
           content:

@@ -24,11 +24,11 @@ services:
     ports:
       - "5000:5000"
     environment:
-      - DB_HOST=${DB_HOST}
-      - DB_USER=${DB_USER}
-      - DB_PORT=${DB_PORT}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - DB_NAME=${DB_NAME}
+      - DB_HOST=database
+      - DB_USER=root
+      - DB_PORT=3306
+      - DB_PASSWORD=123456
+      - DB_NAME=ElearningDatabase
     depends_on:
       db:
         condition: service_healthy

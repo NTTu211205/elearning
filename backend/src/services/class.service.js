@@ -6,7 +6,7 @@ const subjectService = require('../services/subject.service');
 
 // Create
 const createClass = async(classData) => {
-    const {subjectId, teacherId, quantity} = classData;
+    const {subjectId, teacherId, quantity, name, status} = classData;
 
     const subject = await subjectService.getSubject(subjectId);
     if (!subject) {
@@ -18,11 +18,14 @@ const createClass = async(classData) => {
         throw new Error('Teacher not valid');
     }
 
-    const [newClass] = await db.execute('INSERT INTO class(subject_id, teacher_id, quantity) VALUES (?, ?, ?)', [subjectId, teacherId, quantity]);
+    const [newClass] = await db.execute(
+        'INSERT INTO class(subject_id, teacher_id, quantity, name, status) VALUES (?, ?, ?, ?, ?)',
+        [subjectId, teacherId, quantity, name, status ?? 'active']
+    );
 
     return {
         id: newClass.insertId,
-        subjectId, teacherId, quantity
+        subjectId, teacherId, quantity, name, status: status ?? 'active'
     };
 }
 
@@ -46,13 +49,32 @@ const getAllClass = async() => {
 }
 
 const getClassByTeacherId = async (teacherId) => {
-    const [result] = await db.execute('SELECT * FROM class WHERE teacherId = ?', [teacherId]);
+    console.log(teacherId);
+    const query = `
+        SELECT
+            c.id,
+            c.name                          AS className,
+            s.name                          AS subjectName,
+            COUNT(DISTINCT e.student_id)    AS totalStudents,
+            COUNT(DISTINCT t.id)            AS totalTests,
+            c.status,
+            c.createdAt
+        FROM class c
+        LEFT JOIN subject s      ON s.id = c.subject_id
+        LEFT JOIN enrollment e   ON e.class_id = c.id
+        LEFT JOIN test t         ON t.class_id = c.id
+        WHERE c.teacher_id = ?
+        GROUP BY c.id, c.name, s.name, c.status, c.createdAt
+        ORDER BY c.createdAt DESC
+    `;
+
+    const [result] = await db.execute(query, [teacherId]);
 
     return result;
 }
 
 const getClassBySubjectId = async (subjectId) => {
-    const [result] = await db.execute('SELECT * FROM class WHERE subjectId = ?', [subjectId]);
+    const [result] = await db.execute('SELECT * FROM class WHERE subject_id = ?', [subjectId]);
 
     return result;
 }
@@ -61,15 +83,18 @@ const getClassBySubjectId = async (subjectId) => {
 
 // Update
 const updateClass = async(classData) => {
-    const {classId, teacherId, subjectId, quantity} = classData;
+    const {classId, teacherId, subjectId, quantity, name, status} = classData;
 
-    const [result] = await db.execute('UPDATE class SET teacherId = ?, subjectId = ?, quantity = ? WHERE id = ?', [teacherId, subjectId, quantity, classId]);
+    const [result] = await db.execute(
+        'UPDATE class SET teacher_id = ?, subject_id = ?, quantity = ?, name = ?, status = ? WHERE id = ?',
+        [teacherId, subjectId, quantity, name, status, classId]
+    );
 
     if (result.affectedRows === 0) {
         throw new Error('Class not found');
     }
 
-    return {classId, teacherId, subjectId, quantity};
+    return {classId, teacherId, subjectId, quantity, name, status};
 }
 
 
@@ -79,7 +104,7 @@ const deleteClass = async (id) => {
     const [result] = await db.execute('DELETE FROM class WHERE id = ?', [id]);
 
     if (result.affectedRows === 0) {
-        throw new Erorr('Class not found');
+        throw new Error('Class not found');
     }
 
     return true;
