@@ -12,7 +12,7 @@ import { z } from "zod"
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuthStore } from "@/stores/useAuthStore"
-import { useNavigate } from "react-router";
+import { useNavigate, Link } from "react-router";
 import { getDefaultPathByRole } from "@/lib/roleRouting";
 
 // tạo một zod schema để validate form
@@ -95,12 +95,12 @@ export function SignInForm({ className, ...props }: React.ComponentProps<"form">
               {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
             </button>
           </div>
-          <a
-            href="#"
+          <Link
+            to="/forget-password"
             className="block text-right text-sm underline-offset-4 hover:underline"
           >
             Quên mật khẩu?
-          </a>
+          </Link>
           {errors.password && (
                   <p className="text-destructive text-sm">
                     {errors.password.message}

@@ -18,6 +18,14 @@ services:
       retries: 10
       start_period: 10s
 
+  redis:
+    image: redis:7-alpine
+    container_name: elearning_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    command: redis-server --save "" --appendonly no
+
   backend:
     build: ./backend
     container_name: elearning_backend
@@ -29,9 +37,16 @@ services:
       - DB_PORT=3306
       - DB_PASSWORD=123456
       - DB_NAME=ElearningDatabase
+      - REDIS_URL=${REDIS_URL}
+      - SMTP_HOST=smtp.gmail.com
+      - SMTP_PORT=587
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_started
 
   frontend:
     build: ./frontend
