@@ -709,3 +709,366 @@ paths:
                 $ref: '#/components/schemas/ErrorMessage'
               example:
                 message: "User not found"
+
+  /test/{id}/detail:
+    get:
+      summary: Lấy chi tiết đề thi kèm tên lớp và môn học
+      description: |
+        Trả về thông tin đề thi kèm `className`, `subjectId`, `subjectName` (JOIN class → subject).
+
+        Dùng cho trang chi tiết đề thi của giáo viên.
+      tags:
+        - Tests
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Lấy chi tiết thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Success"
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 1
+                      name:
+                        type: string
+                        example: "Kiểm tra giữa kỳ"
+                      class_id:
+                        type: integer
+                        example: 1
+                      createBy:
+                        type: integer
+                        example: 1
+                      turn:
+                        type: integer
+                        example: 1
+                      startAt:
+                        type: string
+                        format: date-time
+                        example: "2025-03-15T07:30:00.000Z"
+                      endAt:
+                        type: string
+                        format: date-time
+                        example: "2025-03-15T09:30:00.000Z"
+                      duration:
+                        type: integer
+                        example: 90
+                      num_question:
+                        type: integer
+                        example: 40
+                      className:
+                        type: string
+                        example: "CSDT-K20A"
+                      subjectId:
+                        type: integer
+                        example: 2
+                      subjectName:
+                        type: string
+                        example: "Cơ sở dữ liệu"
+              example:
+                message: "Success"
+                data:
+                  id: 1
+                  name: "Kiểm tra giữa kỳ"
+                  class_id: 1
+                  createBy: 1
+                  turn: 1
+                  startAt: "2025-03-15T07:30:00.000Z"
+                  endAt: "2025-03-15T09:30:00.000Z"
+                  duration: 90
+                  num_question: 40
+                  className: "CSDT-K20A"
+                  subjectId: 2
+                  subjectName: "Cơ sở dữ liệu"
+        '400':
+          description: Không tìm thấy đề thi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+              example:
+                message: "Test not found"
+
+  /test/{id}/results:
+    get:
+      summary: Lấy kết quả làm bài của tất cả học sinh trong lớp
+      description: |
+        Trả về danh sách học sinh đã đăng ký lớp chứa đề thi, kèm điểm cao nhất (`score`) và thời gian nộp.
+
+        - Học sinh chưa làm bài sẽ có `score: null`, `submitAt: null`.
+        - Kết quả sắp xếp theo `score DESC`, sau đó theo `name ASC`.
+      tags:
+        - Tests
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID đề thi
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Lấy kết quả thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Success"
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        studentId:
+                          type: integer
+                          example: 9
+                        studentName:
+                          type: string
+                          example: "Nguyễn Văn A"
+                        classId:
+                          type: integer
+                          example: 1
+                        className:
+                          type: string
+                          example: "CSDT-K20A"
+                        subjectId:
+                          type: integer
+                          example: 2
+                        totalQuestions:
+                          type: integer
+                          example: 40
+                        score:
+                          type: number
+                          nullable: true
+                          example: 8.5
+                        submitAt:
+                          type: string
+                          format: date-time
+                          nullable: true
+                          example: "2025-03-15T08:45:00.000Z"
+              example:
+                message: "Success"
+                data:
+                  - studentId: 9
+                    studentName: "Nguyễn Văn A"
+                    classId: 1
+                    className: "CSDT-K20A"
+                    subjectId: 2
+                    totalQuestions: 40
+                    score: 9.5
+                    submitAt: "2025-03-15T08:45:00.000Z"
+                  - studentId: 10
+                    studentName: "Trần Thị B"
+                    classId: 1
+                    className: "CSDT-K20A"
+                    subjectId: 2
+                    totalQuestions: 40
+                    score: null
+                    submitAt: null
+        '400':
+          description: Không tìm thấy đề thi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+              example:
+                message: "Test not found"
+
+  /test/{id}/questions:
+    get:
+      summary: Lấy danh sách câu hỏi của đề thi
+      description: |
+        Lấy toàn bộ câu hỏi từ MongoDB collection `question_bank` cho đề thi `id`.
+
+        - Trả về mảng rỗng `[]` nếu chưa có câu hỏi nào.
+        - Mỗi câu hỏi có `correctIndex` — dùng cho trang soạn thảo của giáo viên.
+      tags:
+        - Tests
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID đề thi
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Lấy danh sách câu hỏi thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Success"
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          description: MongoDB ObjectId string của câu hỏi (subdoc _id)
+                          example: "6641a0e123c4d5f678901234"
+                        text:
+                          type: string
+                          example: "Hệ quản trị CSDL nào là quan hệ?"
+                        options:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              label:
+                                type: string
+                                example: "A"
+                              text:
+                                type: string
+                                example: "MongoDB"
+                        correctIndex:
+                          type: integer
+                          description: Chỉ số đáp án đúng (0-based)
+                          example: 2
+                        type:
+                          type: string
+                          enum: [multiple_choice]
+                          example: "multiple_choice"
+              example:
+                message: "Success"
+                data:
+                  - id: "6641a0e123c4d5f678901234"
+                    text: "Hệ quản trị CSDL nào là quan hệ?"
+                    options:
+                      - label: "A"
+                        text: "MongoDB"
+                      - label: "B"
+                        text: "Redis"
+                      - label: "C"
+                        text: "MySQL"
+                      - label: "D"
+                        text: "Cassandra"
+                    correctIndex: 2
+                    type: "multiple_choice"
+        '400':
+          description: Lỗi lấy câu hỏi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+
+    put:
+      summary: Lưu (thay thế) toàn bộ câu hỏi của đề thi
+      description: |
+        Ghi đè toàn bộ mảng câu hỏi của đề thi vào MongoDB collection `question_bank` (upsert).
+
+        - Nếu chưa có document cho `testId` → tạo mới.
+        - Nếu đã có → ghi đè hoàn toàn (các `_id` subdoc được sinh lại).
+        - Sau khi lưu, cập nhật `num_question` trong MySQL table `test`.
+
+        > ⚠️ Các `questionId` trong `StudentAnswer` cũ sẽ **không còn khớp** sau khi lưu lại.
+      tags:
+        - Tests
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID đề thi
+          schema:
+            type: integer
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - questions
+              properties:
+                questions:
+                  type: array
+                  description: Mảng câu hỏi đầy đủ cần lưu
+                  items:
+                    type: object
+                    properties:
+                      text:
+                        type: string
+                        example: "Hệ quản trị CSDL nào là quan hệ?"
+                      options:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            label:
+                              type: string
+                              example: "A"
+                            text:
+                              type: string
+                              example: "MongoDB"
+                      correctIndex:
+                        type: integer
+                        description: Chỉ số đáp án đúng (0-based). -1 nếu chưa xác định (import conflict)
+                        example: 2
+                      type:
+                        type: string
+                        enum: [multiple_choice]
+                        example: "multiple_choice"
+            example:
+              questions:
+                - text: "Hệ quản trị CSDL nào là quan hệ?"
+                  options:
+                    - label: "A"
+                      text: "MongoDB"
+                    - label: "B"
+                      text: "Redis"
+                    - label: "C"
+                      text: "MySQL"
+                    - label: "D"
+                      text: "Cassandra"
+                  correctIndex: 2
+                  type: "multiple_choice"
+      responses:
+        '200':
+          description: Lưu câu hỏi thành công — trả về số câu hỏi đã lưu
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Success"
+                  data:
+                    type: integer
+                    description: Số câu hỏi đã được lưu
+                    example: 10
+              example:
+                message: "Success"
+                data: 10
+        '400':
+          description: Đề thi không tồn tại hoặc lỗi lưu câu hỏi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+              example:
+                message: "Test not found"
+

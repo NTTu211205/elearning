@@ -53,6 +53,15 @@ export const userService = {
     return res.data.data;
   },
 
+  updateProfile: async (payload: { name: string; phone?: string; dob?: string }): Promise<User> => {
+    const res = await api.put<ApiResponse<User>>("/users/profile", payload);
+    return res.data.data;
+  },
+
+  changePassword: async (oldPassword: string, newPassword: string): Promise<void> => {
+    await api.put("/users/password", { oldPassword, newPassword });
+  },
+
   delete: async (id: number): Promise<void> => {
     await api.delete(`/users/${id}`);
   },

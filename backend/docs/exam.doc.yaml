@@ -1,0 +1,757 @@
+openapi: 3.0.3
+info:
+  title: E-Learning Backend API — Exam (Student)
+  description: |
+    API tài liệu cho các endpoint **làm bài kiểm tra của học sinh** trong hệ thống E-Learning.
+
+    ## Luồng làm bài
+    ```
+    POST /exam/start
+        └─► GET  /exam/:doexamId          (lấy câu hỏi + đáp án đã lưu)
+                └─► PUT  /exam/:doexamId/draft     (lưu tạm — gọi liên tục)
+                        └─► POST /exam/:doexamId/submit  (nộp bài chính thức)
+                                └─► GET  /exam/:doexamId/result  (xem kết quả)
+    ```
+
+    ## Bảng `doexam` (MySQL)
+    | Cột | Kiểu | Mô tả |
+    |-----|------|-------|
+    | `id` | INT AUTO_INCREMENT | Khóa chính |
+    | `student_id` | INT FK→user | Học sinh làm bài |
+    | `test_id` | INT FK→test | Đề thi |
+    | `attendAt` | DATETIME | Thời điểm bắt đầu |
+    | `submitAt` | DATETIME (nullable) | Thời điểm nộp bài |
+    | `score` | FLOAT (nullable) | Điểm số (tính sau khi nộp) |
+    | `turn` | INT | Lượt làm thứ mấy |
+    | `status` | ENUM('DOING','DONE') | Trạng thái |
+
+    ## Collection MongoDB `studentanswers`
+    Mỗi document tương ứng một `doexamId`. Lưu mảng `answers` gồm `{ questionId, chosenIndex }`.
+  version: 1.0.0
+  contact:
+    name: Nguyễn Thành Tú
+
+servers:
+  - url: http://localhost:5000
+    description: Local development server
+
+tags:
+  - name: Exam
+    description: Luồng làm bài kiểm tra của học sinh
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    AnswerItem:
+      type: object
+      description: Đáp án của học sinh cho một câu hỏi
+      properties:
+        questionId:
+          type: string
+          description: MongoDB ObjectId string của câu hỏi (subdoc _id trong QuestionBank)
+          example: "6641a0e123c4d5f678901234"
+        chosenIndex:
+          type: integer
+          nullable: true
+          description: Chỉ số đáp án đã chọn (0-based). null = chưa trả lời
+          example: 2
+
+    QuestionForStudent:
+      type: object
+      description: Câu hỏi trả về khi học sinh làm bài — **không có correctIndex**
+      properties:
+        id:
+          type: string
+          description: MongoDB ObjectId string của câu hỏi
+          example: "6641a0e123c4d5f678901234"
+        text:
+          type: string
+          description: Nội dung câu hỏi
+          example: "Hệ quản trị cơ sở dữ liệu nào sau đây là quan hệ?"
+        options:
+          type: array
+          description: Danh sách đáp án
+          items:
+            type: object
+            properties:
+              label:
+                type: string
+                example: "A"
+              text:
+                type: string
+                example: "MongoDB"
+        type:
+          type: string
+          enum: [multiple_choice]
+          example: "multiple_choice"
+
+    AnswerWithResult:
+      type: object
+      description: Câu hỏi kèm đáp án đúng và lựa chọn của học sinh — dùng khi xem lại
+      properties:
+        questionIndex:
+          type: integer
+          description: Thứ tự câu hỏi (1-based)
+          example: 1
+        questionText:
+          type: string
+          example: "Hệ quản trị CSDL nào là quan hệ?"
+        options:
+          type: array
+          description: Danh sách nội dung đáp án (plain text)
+          items:
+            type: string
+          example: ["MongoDB", "Redis", "MySQL", "Cassandra"]
+        correctIndex:
+          type: integer
+          description: Chỉ số đáp án đúng (0-based)
+          example: 2
+        chosenIndex:
+          type: integer
+          nullable: true
+          description: Chỉ số đáp án học sinh đã chọn. null = bỏ qua
+          example: 2
+
+    ExamSession:
+      type: object
+      description: Thông tin phiên làm bài từ bảng doexam
+      properties:
+        id:
+          type: integer
+          description: doexamId
+          example: 37
+        student_id:
+          type: integer
+          example: 9
+        test_id:
+          type: integer
+          example: 11
+        attendAt:
+          type: string
+          format: date-time
+          example: "2026-05-06T12:41:48.073Z"
+        status:
+          type: string
+          enum: [DOING, DONE]
+          example: "DOING"
+        turn:
+          type: integer
+          example: 1
+        testName:
+          type: string
+          example: "Kiểm tra giữa kỳ"
+        duration:
+          type: integer
+          description: Thời lượng làm bài (phút)
+          example: 45
+        num_question:
+          type: integer
+          example: 10
+        endAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-05-07T01:00:00.000Z"
+
+    SubmitResult:
+      type: object
+      description: Kết quả sau khi nộp bài
+      properties:
+        score:
+          type: number
+          format: float
+          description: Điểm số (thang 10)
+          example: 8.0
+        correctCount:
+          type: integer
+          example: 8
+        totalQuestions:
+          type: integer
+          example: 10
+        wrongCount:
+          type: integer
+          example: 1
+        skippedCount:
+          type: integer
+          example: 1
+
+    ErrorMessage:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Thông báo lỗi"
+
+paths:
+
+  # ─────────────────────────────────────────────
+  #  START EXAM
+  # ─────────────────────────────────────────────
+
+  /exam/start:
+    post:
+      summary: Bắt đầu hoặc tiếp tục lượt làm bài
+      description: |
+        Tạo một lượt làm bài mới (`doexam`) và khởi tạo document `StudentAnswer` trong MongoDB.
+
+        **Các trường hợp:**
+        - Nếu học sinh đang có lượt `DOING` → trả về lượt đó để tiếp tục (`isResume: true`).
+        - Nếu chưa có lượt nào đang làm → tạo `doexam` mới, khởi tạo tất cả đáp án là `null`.
+
+        **Điều kiện hợp lệ:**
+        - Học sinh phải đã đăng ký lớp chứa đề thi.
+        - Thời gian hiện tại phải trong khoảng `[startAt, endAt]`.
+        - Số lượt `DONE` chưa đạt giới hạn `maxTurns` của đề thi.
+      tags:
+        - Exam
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - studentId
+                - testId
+              properties:
+                studentId:
+                  type: integer
+                  description: ID học sinh
+                  example: 9
+                testId:
+                  type: integer
+                  description: ID đề thi
+                  example: 11
+            example:
+              studentId: 9
+              testId: 11
+      responses:
+        '200':
+          description: Bắt đầu hoặc tiếp tục lượt làm bài thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Success"
+                  data:
+                    type: object
+                    properties:
+                      doexamId:
+                        type: integer
+                        example: 37
+                      isResume:
+                        type: boolean
+                        description: true = tiếp tục lượt cũ, false = lượt mới
+                        example: false
+                      attendAt:
+                        type: string
+                        format: date-time
+                        example: "2026-05-06T12:41:48.073Z"
+                      savedAnswers:
+                        type: array
+                        description: Danh sách đáp án đã lưu (null nếu lượt mới)
+                        items:
+                          $ref: '#/components/schemas/AnswerItem'
+              example:
+                message: "Success"
+                data:
+                  doexamId: 37
+                  isResume: false
+                  attendAt: "2026-05-06T12:41:48.073Z"
+                  savedAnswers:
+                    - questionId: "6641a0e123c4d5f678901234"
+                      chosenIndex: null
+                    - questionId: "6641a0e123c4d5f678901235"
+                      chosenIndex: null
+        '400':
+          description: Lỗi validate hoặc nghiệp vụ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+              examples:
+                not_enrolled:
+                  summary: Học sinh chưa đăng ký lớp
+                  value:
+                    message: "Student is not enrolled in this class"
+                not_started:
+                  summary: Đề thi chưa mở
+                  value:
+                    message: "Exam has not started yet"
+                ended:
+                  summary: Đề thi đã kết thúc
+                  value:
+                    message: "Exam has ended"
+                no_turns_left:
+                  summary: Hết lượt thi
+                  value:
+                    message: "You have used all allowed attempts for this test"
+
+  # ─────────────────────────────────────────────
+  #  GET SESSION
+  # ─────────────────────────────────────────────
+
+  /exam/{doexamId}:
+    get:
+      summary: Lấy thông tin phiên làm bài
+      description: |
+        Trả về thông tin phiên làm bài gồm:
+        - **session**: metadata của `doexam` (tên đề, thời lượng, số câu, endAt)
+        - **questionsForStudent**: danh sách câu hỏi **không có `correctIndex`** (tránh lộ đáp án)
+        - **savedAnswers**: đáp án học sinh đã lưu tạm từ `StudentAnswer`
+      tags:
+        - Exam
+      parameters:
+        - name: doexamId
+          in: path
+          required: true
+          description: ID của lượt làm bài (doexam.id)
+          schema:
+            type: integer
+          example: 37
+      responses:
+        '200':
+          description: Lấy phiên làm bài thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Success"
+                  data:
+                    type: object
+                    properties:
+                      session:
+                        $ref: '#/components/schemas/ExamSession'
+                      questionsForStudent:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/QuestionForStudent'
+                      savedAnswers:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/AnswerItem'
+              example:
+                message: "Success"
+                data:
+                  session:
+                    id: 37
+                    student_id: 9
+                    test_id: 11
+                    attendAt: "2026-05-06T12:41:48.073Z"
+                    status: "DOING"
+                    turn: 1
+                    testName: "Kiểm tra giữa kỳ"
+                    duration: 45
+                    num_question: 10
+                    endAt: "2026-05-07T01:00:00.000Z"
+                  questionsForStudent:
+                    - id: "6641a0e123c4d5f678901234"
+                      text: "Hệ quản trị CSDL nào là quan hệ?"
+                      options:
+                        - label: "A"
+                          text: "MongoDB"
+                        - label: "B"
+                          text: "Redis"
+                        - label: "C"
+                          text: "MySQL"
+                        - label: "D"
+                          text: "Cassandra"
+                      type: "multiple_choice"
+                  savedAnswers:
+                    - questionId: "6641a0e123c4d5f678901234"
+                      chosenIndex: null
+        '400':
+          description: Không tìm thấy phiên làm bài
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+              example:
+                message: "Exam session not found"
+
+  # ─────────────────────────────────────────────
+  #  SAVE DRAFT
+  # ─────────────────────────────────────────────
+
+  /exam/{doexamId}/draft:
+    put:
+      summary: Lưu tạm đáp án (auto-save)
+      description: |
+        Ghi đè toàn bộ mảng `answers` vào document `StudentAnswer` trong MongoDB.
+
+        - Gọi liên tục trong quá trình làm bài (debounce ~800ms ở frontend).
+        - **Không tính điểm**, không thay đổi trạng thái `doexam`.
+        - Nếu phiên đã `DONE`, trả về lỗi.
+      tags:
+        - Exam
+      parameters:
+        - name: doexamId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 37
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - answers
+              properties:
+                answers:
+                  type: array
+                  description: Toàn bộ mảng đáp án hiện tại
+                  items:
+                    $ref: '#/components/schemas/AnswerItem'
+            example:
+              answers:
+                - questionId: "6641a0e123c4d5f678901234"
+                  chosenIndex: 2
+                - questionId: "6641a0e123c4d5f678901235"
+                  chosenIndex: null
+      responses:
+        '200':
+          description: Lưu tạm thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Success"
+                  data:
+                    type: object
+                    properties:
+                      saved:
+                        type: boolean
+                        example: true
+              example:
+                message: "Success"
+                data:
+                  saved: true
+        '400':
+          description: Lỗi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+              examples:
+                not_found:
+                  value:
+                    message: "Exam session not found"
+                already_submitted:
+                  value:
+                    message: "Exam already submitted"
+                invalid_answers:
+                  value:
+                    message: "answers must be an array"
+
+  # ─────────────────────────────────────────────
+  #  SUBMIT EXAM
+  # ─────────────────────────────────────────────
+
+  /exam/{doexamId}/submit:
+    post:
+      summary: Nộp bài chính thức
+      description: |
+        Nộp bài, tính điểm và cập nhật `doexam` sang trạng thái `DONE`.
+
+        **Xử lý:**
+        1. Lưu đáp án cuối cùng vào `StudentAnswer`.
+        2. So sánh với `correctIndex` trong `QuestionBank` (MongoDB) để tính điểm.
+        3. Cập nhật `doexam.score`, `doexam.submitAt`, `doexam.status = 'DONE'`.
+        4. Cập nhật `enrollment.averageScore` (trung bình điểm cao nhất của mỗi đề trong lớp).
+        5. Ghi log `SUBMIT` vào collection `logs`.
+
+        **Công thức điểm:** `score = (correct / totalQuestions) × 10` (làm tròn 2 chữ số).
+      tags:
+        - Exam
+      parameters:
+        - name: doexamId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 37
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - answers
+              properties:
+                answers:
+                  type: array
+                  description: Đáp án cuối cùng khi nộp bài
+                  items:
+                    $ref: '#/components/schemas/AnswerItem'
+            example:
+              answers:
+                - questionId: "6641a0e123c4d5f678901234"
+                  chosenIndex: 2
+                - questionId: "6641a0e123c4d5f678901235"
+                  chosenIndex: 0
+      responses:
+        '200':
+          description: Nộp bài thành công, trả về kết quả
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Success"
+                  data:
+                    $ref: '#/components/schemas/SubmitResult'
+              example:
+                message: "Success"
+                data:
+                  score: 8.0
+                  correctCount: 8
+                  totalQuestions: 10
+                  wrongCount: 1
+                  skippedCount: 1
+        '400':
+          description: Lỗi nộp bài
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+              examples:
+                not_found:
+                  value:
+                    message: "Exam session not found"
+                already_submitted:
+                  value:
+                    message: "Exam already submitted"
+
+  # ─────────────────────────────────────────────
+  #  GET RESULT (by doexamId)
+  # ─────────────────────────────────────────────
+
+  /exam/{doexamId}/result:
+    get:
+      summary: Xem kết quả chi tiết theo doexamId
+      description: |
+        Trả về kết quả chi tiết của một lượt làm bài đã hoàn thành (`status = DONE`).
+
+        **Dữ liệu trả về:**
+        - `session`: metadata kết quả (điểm, thời gian nộp, tên đề, lớp, môn)
+        - `answers`: từng câu hỏi kèm `correctIndex` và `chosenIndex`
+      tags:
+        - Exam
+      parameters:
+        - name: doexamId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 37
+      responses:
+        '200':
+          description: Lấy kết quả thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Success"
+                  data:
+                    type: object
+                    properties:
+                      session:
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+                            example: 37
+                          score:
+                            type: number
+                            example: 8.0
+                          submitAt:
+                            type: string
+                            format: date-time
+                            example: "2026-05-06T12:52:00.000Z"
+                          turn:
+                            type: integer
+                            example: 1
+                          testName:
+                            type: string
+                            example: "Kiểm tra giữa kỳ"
+                          className:
+                            type: string
+                            example: "CSDT-K20A"
+                          subjectName:
+                            type: string
+                            example: "Cơ sở dữ liệu"
+                          studentName:
+                            type: string
+                            example: "Nguyễn Văn A"
+                          num_question:
+                            type: integer
+                            example: 10
+                      answers:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/AnswerWithResult'
+              example:
+                message: "Success"
+                data:
+                  session:
+                    id: 37
+                    score: 8.0
+                    submitAt: "2026-05-06T12:52:00.000Z"
+                    turn: 1
+                    testName: "Kiểm tra giữa kỳ"
+                    className: "CSDT-K20A"
+                    subjectName: "Cơ sở dữ liệu"
+                    studentName: "Nguyễn Văn A"
+                    num_question: 10
+                  answers:
+                    - questionIndex: 1
+                      questionText: "Hệ quản trị CSDL nào là quan hệ?"
+                      options: ["MongoDB", "Redis", "MySQL", "Cassandra"]
+                      correctIndex: 2
+                      chosenIndex: 2
+                    - questionIndex: 2
+                      questionText: "Mô hình dữ liệu nào dùng document?"
+                      options: ["Relational", "NoSQL Document", "Graph", "Column"]
+                      correctIndex: 1
+                      chosenIndex: 0
+        '400':
+          description: Không tìm thấy kết quả hoặc bài chưa nộp
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+              example:
+                message: "Result not found or exam not submitted yet"
+
+  # ─────────────────────────────────────────────
+  #  GET RESULT (by studentId + testId)
+  # ─────────────────────────────────────────────
+
+  /exam/result/student/{studentId}/test/{testId}:
+    get:
+      summary: Xem kết quả bài thi tốt nhất của học sinh cho một đề
+      description: |
+        Lấy lượt làm có **điểm cao nhất** của học sinh `studentId` cho đề thi `testId`.
+
+        Dùng cho trang xem lại bài của giáo viên hoặc học sinh truy cập theo route `classId/studentId/testId`.
+
+        **Khác với `GET /exam/:doexamId/result`:** endpoint này tra theo `(studentId, testId)`,
+        không cần biết `doexamId`.
+
+        - Nếu học sinh chưa nộp bài nào cho đề thi này, trả về `404`.
+      tags:
+        - Exam
+      parameters:
+        - name: studentId
+          in: path
+          required: true
+          description: ID học sinh
+          schema:
+            type: integer
+          example: 9
+        - name: testId
+          in: path
+          required: true
+          description: ID đề thi
+          schema:
+            type: integer
+          example: 11
+      responses:
+        '200':
+          description: Lấy kết quả tốt nhất thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Success"
+                  data:
+                    type: object
+                    properties:
+                      session:
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+                            example: 37
+                          score:
+                            type: number
+                            example: 8.0
+                          submitAt:
+                            type: string
+                            format: date-time
+                            example: "2026-05-06T12:52:00.000Z"
+                          turn:
+                            type: integer
+                            example: 1
+                          testName:
+                            type: string
+                            example: "Kiểm tra giữa kỳ"
+                          className:
+                            type: string
+                            example: "CSDT-K20A"
+                          subjectName:
+                            type: string
+                            example: "Cơ sở dữ liệu"
+                          studentName:
+                            type: string
+                            example: "Nguyễn Văn A"
+                          num_question:
+                            type: integer
+                            example: 10
+                      answers:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/AnswerWithResult'
+              example:
+                message: "Success"
+                data:
+                  session:
+                    id: 37
+                    score: 8.0
+                    submitAt: "2026-05-06T12:52:00.000Z"
+                    turn: 1
+                    testName: "Kiểm tra giữa kỳ"
+                    className: "CSDT-K20A"
+                    subjectName: "Cơ sở dữ liệu"
+                    studentName: "Nguyễn Văn A"
+                    num_question: 10
+                  answers:
+                    - questionIndex: 1
+                      questionText: "Hệ quản trị CSDL nào là quan hệ?"
+                      options: ["MongoDB", "Redis", "MySQL", "Cassandra"]
+                      correctIndex: 2
+                      chosenIndex: 2
+        '404':
+          description: Học sinh chưa nộp bài nào cho đề thi này
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+              example:
+                message: "No submitted exam found for this student and test"

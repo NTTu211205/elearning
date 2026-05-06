@@ -645,3 +645,286 @@ paths:
                 $ref: '#/components/schemas/ErrorMessage'
               example:
                 message: "Class not found"
+
+  /enrollment/student/{studentId}/classes-with-tests:
+    get:
+      summary: Lấy danh sách lớp học kèm đề thi của học sinh
+      description: |
+        Trả về danh sách các lớp học mà học sinh `studentId` đã đăng ký, mỗi lớp kèm mảng `tests[]`.
+
+        **Cho mỗi đề thi:**
+        - `testId`, `testName`, `maxTurns`, `startAt`, `endAt`, `duration`, `numQuestion`
+        - `doneTurns` — Số lượt đã nộp thành công (`status = 'DONE'`)
+        - `bestScore` — Điểm cao nhất trong tất cả lượt, `null` nếu chưa làm
+        - `ongoingDoexamId` — ID lượt đang làm dở (`status = 'DOING'`), `null` nếu không có
+
+        Dùng cho trang danh sách lớp học + đề thi của học sinh.
+      tags:
+        - Enrollment
+      parameters:
+        - name: studentId
+          in: path
+          required: true
+          description: ID của học sinh
+          schema:
+            type: integer
+          example: 9
+      responses:
+        '200':
+          description: Lấy danh sách thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Success"
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        classId:
+                          type: integer
+                          example: 1
+                        className:
+                          type: string
+                          example: "CSDT-K20A"
+                        classStatus:
+                          type: string
+                          example: "active"
+                        subjectName:
+                          type: string
+                          example: "Cơ sở dữ liệu"
+                        tests:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              testId:
+                                type: integer
+                                example: 11
+                              testName:
+                                type: string
+                                example: "Kiểm tra giữa kỳ"
+                              maxTurns:
+                                type: integer
+                                example: 3
+                              startAt:
+                                type: string
+                                format: date-time
+                                example: "2026-05-06T00:00:00.000Z"
+                              endAt:
+                                type: string
+                                format: date-time
+                                example: "2026-05-07T00:00:00.000Z"
+                              duration:
+                                type: integer
+                                example: 45
+                              numQuestion:
+                                type: integer
+                                example: 10
+                              doneTurns:
+                                type: integer
+                                example: 1
+                              bestScore:
+                                type: number
+                                nullable: true
+                                example: 8.0
+                              ongoingDoexamId:
+                                type: integer
+                                nullable: true
+                                example: null
+              example:
+                message: "Success"
+                data:
+                  - classId: 1
+                    className: "CSDT-K20A"
+                    classStatus: "active"
+                    subjectName: "Cơ sở dữ liệu"
+                    tests:
+                      - testId: 11
+                        testName: "Kiểm tra giữa kỳ"
+                        maxTurns: 3
+                        startAt: "2026-05-06T00:00:00.000Z"
+                        endAt: "2026-05-07T00:00:00.000Z"
+                        duration: 45
+                        numQuestion: 10
+                        doneTurns: 1
+                        bestScore: 8.0
+                        ongoingDoexamId: null
+        '400':
+          description: Không tìm thấy học sinh
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+              example:
+                message: "Student not found"
+
+  /enrollment/class/{classId}/student/{studentId}/detail:
+    get:
+      summary: Lấy chi tiết học sinh trong lớp (cho giáo viên)
+      description: |
+        Trả về thông tin chi tiết của học sinh `studentId` trong lớp `classId`, dùng cho giáo viên xem.
+
+        **Dữ liệu trả về:**
+        - `profile`: Thông tin cá nhân + thông tin lớp, môn học và điểm trung bình
+        - `tests`: Danh sách tất cả đề thi trong lớp kèm kết quả làm bài tốt nhất
+
+        **Mỗi phần tử trong `tests`:**
+        - `testId`, `testName`
+        - `score` — Điểm cao nhất (`null` nếu chưa làm)
+        - `submitAt` — Thời gian nộp bài tốt nhất
+        - `turn` — Số lượt đã làm
+        - `correctCount`, `wrongCount`, `skippedCount` — Chỉ tính cho lượt điểm cao nhất
+
+        - Trả về `404` nếu học sinh không đăng ký lớp này.
+      tags:
+        - Enrollment
+      parameters:
+        - name: classId
+          in: path
+          required: true
+          description: ID của lớp học
+          schema:
+            type: integer
+          example: 1
+        - name: studentId
+          in: path
+          required: true
+          description: ID của học sinh
+          schema:
+            type: integer
+          example: 9
+      responses:
+        '200':
+          description: Lấy chi tiết thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Success"
+                  data:
+                    type: object
+                    properties:
+                      profile:
+                        type: object
+                        properties:
+                          studentId:
+                            type: integer
+                            example: 9
+                          studentName:
+                            type: string
+                            example: "Nguyễn Văn A"
+                          email:
+                            type: string
+                            example: "a@student.tdtu.edu.vn"
+                          phone:
+                            type: string
+                            example: "0901234567"
+                          dob:
+                            type: string
+                            format: date
+                            example: "2005-01-15"
+                          classId:
+                            type: integer
+                            example: 1
+                          className:
+                            type: string
+                            example: "CSDT-K20A"
+                          subjectName:
+                            type: string
+                            example: "Cơ sở dữ liệu"
+                          subjectId:
+                            type: integer
+                            example: 2
+                          averageScore:
+                            type: number
+                            nullable: true
+                            example: 8.25
+                      tests:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            testId:
+                              type: integer
+                              example: 11
+                            testName:
+                              type: string
+                              example: "Kiểm tra giữa kỳ"
+                            score:
+                              type: number
+                              nullable: true
+                              example: 8.0
+                            submitAt:
+                              type: string
+                              format: date-time
+                              nullable: true
+                              example: "2025-03-15T08:45:00.000Z"
+                            turn:
+                              type: integer
+                              nullable: true
+                              description: Số lượt học sinh đã làm
+                              example: 2
+                            correctCount:
+                              type: integer
+                              example: 8
+                            wrongCount:
+                              type: integer
+                              example: 1
+                            skippedCount:
+                              type: integer
+                              example: 1
+              example:
+                message: "Success"
+                data:
+                  profile:
+                    studentId: 9
+                    studentName: "Nguyễn Văn A"
+                    email: "a@student.tdtu.edu.vn"
+                    phone: "0901234567"
+                    dob: "2005-01-15"
+                    classId: 1
+                    className: "CSDT-K20A"
+                    subjectName: "Cơ sở dữ liệu"
+                    subjectId: 2
+                    averageScore: 8.25
+                  tests:
+                    - testId: 11
+                      testName: "Kiểm tra giữa kỳ"
+                      score: 8.0
+                      submitAt: "2025-03-15T08:45:00.000Z"
+                      turn: 2
+                      correctCount: 8
+                      wrongCount: 1
+                      skippedCount: 1
+                    - testId: 12
+                      testName: "Kiểm tra cuối kỳ"
+                      score: null
+                      submitAt: null
+                      turn: null
+                      correctCount: 0
+                      wrongCount: 0
+                      skippedCount: 0
+        '404':
+          description: Học sinh không đăng ký lớp này hoặc không tồn tại
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+              example:
+                message: "Student is not enrolled in this class"
+        '400':
+          description: Lỗi tham số
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+              example:
+                message: "Invalid classId or studentId"

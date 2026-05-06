@@ -12,6 +12,8 @@ const UserMenu = () => {
   const { user, signOut } = useAuthStore();
   const navigate = useNavigate();
 
+  const rolePrefix = user?.role === "admin" ? "/admin" : user?.role === "teacher" ? "/teacher" : "/student";
+
   const handleLogout = async () => {
     await signOut();
     navigate("/signin");
@@ -55,9 +57,7 @@ const UserMenu = () => {
 
           <DropdownMenu.Item
             className={menuItemClass}
-            onSelect={() => {
-              // TODO: navigate to profile page
-            }}
+            onSelect={() => navigate(`${rolePrefix}/profile`)}
           >
             <User className="size-4 shrink-0" />
             Thông tin cá nhân
@@ -65,9 +65,7 @@ const UserMenu = () => {
 
           <DropdownMenu.Item
             className={menuItemClass}
-            onSelect={() => {
-              // TODO: open change password modal
-            }}
+            onSelect={() => navigate(`${rolePrefix}/change-password`)}
           >
             <KeyRound className="size-4 shrink-0" />
             Đổi mật khẩu

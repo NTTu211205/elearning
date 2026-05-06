@@ -13,11 +13,15 @@ const {verifyToken, authorizeRole} = require('../middlewares/auth.middleware');
 
 router.post('/', userController.addUser);
 router.post('/bulk', userController.bulkAddUsers);   // must be before /:id
-router.delete('/:id', userController.deleteUser);
-router.put('/:id', userController.updateUser);
+
+// specific routes must come BEFORE /:id to avoid param capture
+router.get('/profile', verifyToken, userController.getUserProfile);
+router.put('/profile', verifyToken, userController.updateProfile);
+router.put('/password', verifyToken, userController.changePassword);
 
 router.get('/', userController.getAllUser);
-router.get('/profile/', verifyToken, userController.getUserProfile);
+router.delete('/:id', userController.deleteUser);
+router.put('/:id', userController.updateUser);
 router.get('/:id', userController.getUserById);
 
 module.exports = router;

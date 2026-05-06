@@ -120,4 +120,35 @@ const bulkAddUsers = async (req, res) => {
     }
 };
 
-module.exports = {addUser, getAllUser, deleteUser, updateUser, getUserById, getUserProfile, bulkAddUsers};
+// update own profile (from JWT — name, phone, dob only)
+const updateProfile = async (req, res) => {
+    try {
+        const { id } = req.user;
+        const { name, dob, phone } = req.body;
+        if (!name) return res.status(400).json({ message: 'Tên không được để trống' });
+        const result = await userService.updateProfile(id, { name, dob, phone });
+        res.status(200).json({ message: 'Success', data: result });
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+
+// change own password (from JWT)
+const changePassword = async (req, res) => {
+    try {
+        const { id } = req.user;
+        const { oldPassword, newPassword } = req.body;
+        if (!oldPassword || !newPassword) {
+            return res.status(400).json({ message: 'Vui lòng nhập đầy đủ thông tin' });
+        }
+        if (newPassword.length < 6) {
+            return res.status(400).json({ message: 'Mật khẩu mới phải có ít nhất 6 ký tự' });
+        }
+        await userService.changePassword(id, oldPassword, newPassword);
+        res.status(200).json({ message: 'Đổi mật khẩu thành công' });
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+
+module.exports = {addUser, getAllUser, deleteUser, updateUser, getUserById, getUserProfile, bulkAddUsers, updateProfile, changePassword};

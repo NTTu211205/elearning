@@ -19,6 +19,8 @@ import ClassListPage from "./pages/Teacher/classes/ClassListPage";
 import ClassDetailPage from "./pages/Teacher/classes/ClassDetailPage";
 import StudentDetailPage from "./pages/Teacher/classes/StudentDetailPage";
 import SubmissionDetailPage from "./pages/shared/SubmissionDetailPage";
+import ProfilePage from "./pages/shared/ProfilePage";
+import ChangePasswordPage from "./pages/shared/ChangePasswordPage";
 import ScoresPage from "./pages/Teacher/scores/ScoresPage";
 import AdminLayout from "./components/admin/layout/AdminLayout";
 import TeacherLayout from "./components/teacher/layout/TeacherLayout";
@@ -70,6 +72,8 @@ function App() {
             <Route path='/admin/users' element={<UserListPage />} />
             <Route path='/admin/subjects' element={<SubjectListPage />} />
             <Route path='/admin/classes' element={<AdminClassListPage />} />
+            <Route path='/admin/profile' element={<ProfilePage />} />
+            <Route path='/admin/change-password' element={<ChangePasswordPage />} />
           </Route>
         </Route>
 
@@ -83,6 +87,8 @@ function App() {
             <Route path='/teacher/students/:classId/:studentId' element={<StudentDetailPage />} />
             <Route path='/teacher/submission/:classId/:studentId/:testId' element={<SubmissionDetailPage />} />
             <Route path='/teacher/scores' element={<ScoresPage />} />
+            <Route path='/teacher/profile' element={<ProfilePage />} />
+            <Route path='/teacher/change-password' element={<ChangePasswordPage />} />
           </Route>
           {/* Editor dùng full-screen layout riêng, không dùng TeacherLayout */}
           <Route path='/teacher/tests/new' element={<TestEditorPage />} />
@@ -99,6 +105,8 @@ function App() {
             <Route path='/student' element={<StudentDashboard />} />
             <Route path='/student/classes' element={<StudentClassesPage />} />
             <Route path='/student/submission/:classId/:studentId/:testId' element={<SubmissionDetailPage />} />
+            <Route path='/student/profile' element={<ProfilePage />} />
+            <Route path='/student/change-password' element={<ChangePasswordPage />} />
           </Route>
         </Route>
 

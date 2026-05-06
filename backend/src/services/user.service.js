@@ -106,4 +106,36 @@ const bulkCreateUsers = async (users) => {
     return { success, failed };
 };
 
-module.exports = {createUser, getAllUser, deleteUser, updateUser, getUserById, getUserFollowingStatus, getTeacherById, bulkCreateUsers};
+// update own profile (name, phone, dob) — email is identity, not changed here
+const updateProfile = async (id, data) => {
+    const { name, dob, phone } = data;
+
+    const [users] = await db.execute('SELECT * FROM user WHERE id = ? AND status = 1', [id]);
+    if (users.length === 0) throw new Error('User not found');
+
+    await db.execute(
+        'UPDATE user SET name = ?, dob = ?, phone = ? WHERE id = ?',
+        [name, dob ?? null, phone ?? null, id]
+    );
+
+    const [updated] = await db.execute('SELECT id, name, dob, phone, email, role FROM user WHERE id = ?', [id]);
+    return updated[0];
+};
+
+// change own password — requires correct current password
+const changePassword = async (id, oldPassword, newPassword) => {
+    const [users] = await db.execute('SELECT * FROM user WHERE id = ? AND status = 1', [id]);
+    if (users.length === 0) throw new Error('User not found');
+
+    const user = users[0];
+    const isMatch = await bcrypt.compare(oldPassword, user.password);
+    if (!isMatch) throw new Error('Mật khẩu hiện tại không đúng');
+
+    const salt = await bcrypt.genSalt(10);
+    const hash = await bcrypt.hash(newPassword, salt);
+
+    await db.execute('UPDATE user SET password = ? WHERE id = ?', [hash, id]);
+    return true;
+};
+
+module.exports = {createUser, getAllUser, deleteUser, updateUser, getUserById, getUserFollowingStatus, getTeacherById, bulkCreateUsers, updateProfile, changePassword};
