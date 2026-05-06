@@ -68,7 +68,7 @@ const updateUser = async(id, userData) => {
 
 // get user by id
 const getUserById = async(id) => {
-    const [result] = await db.execute('SELECT name, dob, phone, email, role FROM user WHERE id = ? AND status = 1', [id]);
+    const [result] = await db.execute('SELECT id, name, dob, phone, email, role FROM user WHERE id = ? AND status = 1', [id]);
 
     if (result.length === 0) {
         throw new Error("User not exist");
@@ -77,7 +77,7 @@ const getUserById = async(id) => {
 }
 
 const getTeacherById = async (id) => {
-    const [result] = await db.execute('SELECT name, dob, phone, email, role FROM user WHERE id = ? AND status = 1 and role = "teacher"', [id]);
+    const [result] = await db.execute('SELECT id, name, dob, phone, email, role FROM user WHERE id = ? AND status = 1 and role = "teacher"', [id]);
 
     if (result.length === 0) {
         throw new Error('Teacher not found');
@@ -86,4 +86,24 @@ const getTeacherById = async (id) => {
     return result[0];
 }
 
-module.exports = {createUser, getAllUser, deleteUser, updateUser, getUserById, getUserFollowingStatus, getTeacherById};
+/**
+ * Import nhiều user từ CSV. Mỗi item: { name, email, role, password, phone, dob? }
+ * Trả về { success: [{email, data}], failed: [{email, error}] }
+ */
+const bulkCreateUsers = async (users) => {
+    const success = [];
+    const failed  = [];
+
+    for (const user of users) {
+        try {
+            const data = await createUser(user);
+            success.push({ email: user.email, data });
+        } catch (err) {
+            failed.push({ email: user.email, error: err.message });
+        }
+    }
+
+    return { success, failed };
+};
+
+module.exports = {createUser, getAllUser, deleteUser, updateUser, getUserById, getUserFollowingStatus, getTeacherById, bulkCreateUsers};

@@ -9,6 +9,8 @@ router.post('/bulk', enrollmentController.enrollStudents);
 // READ
 router.get('/', enrollmentController.getAllEnrollments);
 router.get('/class/:classId', enrollmentController.getStudentsByClass);
+router.get('/class/:classId/student/:studentId/detail', enrollmentController.getStudentDetailInClass);
+router.get('/student/:studentId/classes-with-tests', enrollmentController.getClassesWithTests);
 router.get('/student/:studentId', enrollmentController.getClassesByStudent);
 
 // UPDATE

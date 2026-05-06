@@ -10,16 +10,23 @@ const subjectRouter = require('./src/routes/subject.route');
 const classRouter = require('./src/routes/class.route');
 const enrollmentRouter = require('./src/routes/enrollment.route');
 const testRouter = require('./src/routes/test.route');
+const studentExamRouter = require('./src/routes/studentExam.route');
 
 const promisePool = require('./src/config/MySQLConnect');
 const connectDB = require('./src/config/MongoDBConnect');
 
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./src/utils/swagger');
-
+const cors = require("cors"); // Thêm cors để xử lý CORS - xanh thêm
 
 var app = express();
 connectDB()
+
+// view engine setup
+const allowedOrigin = process.env.FRONTEND_URL || "http://localhost:5173";
+
+app.use(cors({ origin: process.env.CLIENT_URL || allowedOrigin, credentials: true })); // xanh thêm
+
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.use(logger('dev'));
@@ -34,6 +41,7 @@ app.use('/subject', subjectRouter);
 app.use('/class', classRouter);
 app.use('/enrollment', enrollmentRouter);
 app.use('/test', testRouter);
+app.use('/exam', studentExamRouter);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {

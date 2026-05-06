@@ -2,9 +2,9 @@ const db = require('../config/MySQLConnect');
 
 // create new subject
 const createSubject = async(name, lessons) => {
-    const [result] = await db.execute('INSERT INTO subject(name, lessons, status) VALUES (?, ?, ?)', [name, lessons, 1]);
+    const [result] = await db.execute('INSERT INTO subject(name, lessons) VALUES (?, ?, ?)', [name, lessons, 1]);
 
-    return {id:result.insertId, name, lessons};
+    return {id: result.insertId, name, lessons};
 }
 
 // get subject by id
@@ -51,10 +51,10 @@ const deleteSubject = async (id) => {
 const getAllSubject = async () => {
     const [result] = await db.execute('SELECT * FROM subject');
     
-    if (result.length === 0) {
-        throw new Error('Subject not found');
-    }
-
+    // if (result.length === 0) {
+    //     throw new Error('Subject not found');
+    // }
+    // xanh sửa thêm điều kiện để trả về mảng rỗng thay vì lỗi khi không có môn học nào
     return result;
 }
 

@@ -139,12 +139,36 @@ const removeAllStudentsFromClass = async (req, res) => {
     }
 };
 
+// GET /enrollment/student/:studentId/classes-with-tests
+const getClassesWithTests = async (req, res) => {
+    try {
+        const { studentId } = req.params;
+        const result = await enrollmentService.getClassesWithTestsByStudent(studentId);
+        res.status(200).json({ message: 'Success', data: result });
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+
+// GET /enrollment/class/:classId/student/:studentId/detail
+const getStudentDetailInClass = async (req, res) => {
+    try {
+        const { classId, studentId } = req.params;
+        const result = await enrollmentService.getStudentDetailInClass(classId, studentId);
+        res.status(200).json({ message: 'Success', data: result });
+    } catch (error) {
+        res.status(404).json({ message: error.message });
+    }
+};
+
 module.exports = {
     enrollStudent,
     enrollStudents,
     getAllEnrollments,
     getStudentsByClass,
     getClassesByStudent,
+    getClassesWithTests,
+    getStudentDetailInClass,
     updateAverageScore,
     removeStudent,
     removeAllStudentsFromClass,

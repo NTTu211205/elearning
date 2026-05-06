@@ -83,7 +83,7 @@ const getUserProfile = async(req, res) => {
 
         res.status(200).json({
             message: 'Success',
-            data: result
+            data: { ...result}
         })
     }
     catch(error) {
@@ -106,4 +106,18 @@ const getUserById = async (req, res) => {
     }
 }
 
-module.exports = {addUser, getAllUser, deleteUser, updateUser, getUserById, getUserProfile};
+// bulk import users from CSV (parsed on client, sent as JSON array)
+const bulkAddUsers = async (req, res) => {
+    try {
+        const { users } = req.body;
+        if (!Array.isArray(users) || users.length === 0) {
+            return res.status(400).json({ message: 'Danh sách người dùng không hợp lệ' });
+        }
+        const result = await userService.bulkCreateUsers(users);
+        res.status(200).json({ message: 'Success', data: result });
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+
+module.exports = {addUser, getAllUser, deleteUser, updateUser, getUserById, getUserProfile, bulkAddUsers};

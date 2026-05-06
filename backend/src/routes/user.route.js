@@ -11,7 +11,8 @@ const {verifyToken, authorizeRole} = require('../middlewares/auth.middleware');
 // router.put('/:id', verifyToken, userUpdationValidation, userController.updateUser);
 // router.get('/:id', verifyToken,  userController.getUserById)
 
-router.post('/',userController.addUser);
+router.post('/', userController.addUser);
+router.post('/bulk', userController.bulkAddUsers);   // must be before /:id
 router.delete('/:id', userController.deleteUser);
 router.put('/:id', userController.updateUser);
 

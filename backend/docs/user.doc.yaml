@@ -119,7 +119,7 @@ paths:
       summary: Đăng nhập hệ thống
       description: |
         Xác thực người dùng bằng email và mật khẩu.  
-        Trả về cặp `accessToken` và `refreshToken` để sử dụng cho các request tiếp theo.
+        Trả về `accessToken` trong response body và set `refreshToken` trong cookie HttpOnly.
       tags:
         - Auth
       requestBody:
@@ -153,12 +153,23 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: '#/components/schemas/TokenPair'
+                        type: object
+                        properties:
+                          user:
+                            $ref: '#/components/schemas/UserObject'
+                          token:
+                            type: string
+                            description: JWT access token (ngắn hạn)
+                            example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
               example:
                 message: "Success"
                 data:
-                  accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                  refreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  user:
+                    id: 1
+                    name: "Nguyễn Thành Tú"
+                    role: "student"
+                    email: "thanhtu.52300076@student.tdtu.edu.vn"
+                  token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
         '400':
           description: Sai email hoặc mật khẩu, hoặc tài khoản bị khóa
           content:
@@ -172,23 +183,10 @@ paths:
     post:
       summary: Đăng xuất khỏi hệ thống
       description: |
-        Hủy `refreshToken` hiện tại. Sau khi gọi endpoint này,  
-        refresh token đó sẽ không còn dùng được để lấy access token mới.
+        Hủy `refreshToken` hiện tại từ cookie HttpOnly. Sau khi gọi endpoint này,  
+        phiên đăng nhập sẽ không thể refresh access token nữa.
       tags:
         - Auth
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - refreshToken
-              properties:
-                refreshToken:
-                  type: string
-                  description: Refresh token cần hủy
-                  example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
       responses:
         '200':
           description: Đăng xuất thành công
@@ -198,43 +196,15 @@ paths:
                 $ref: '#/components/schemas/SuccessMessage'
               example:
                 message: "Success"
-        '400':
-          description: Thiếu refresh token hoặc token không hợp lệ
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorMessage'
-              examples:
-                missing_token:
-                  summary: Không truyền token
-                  value:
-                    message: "Provide token"
-                invalid_token:
-                  summary: Token không hợp lệ
-                  value:
-                    message: "Invalid refresh token"
 
   /auth/refresh-token:
     post:
       summary: Làm mới access token
       description: |
-        Dùng `refreshToken` hợp lệ để lấy cặp `accessToken` và `refreshToken` mới.  
+        Dùng `refreshToken` từ cookie HttpOnly để lấy `accessToken` mới.  
         Thường được gọi khi nhận được lỗi `TOKEN_EXPIRED` (HTTP 401) từ các endpoint khác.
       tags:
         - Auth
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - oldRefreshToken
-              properties:
-                oldRefreshToken:
-                  type: string
-                  description: Refresh token hiện tại muốn làm mới
-                  example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
       responses:
         '200':
           description: Làm mới token thành công
@@ -250,27 +220,39 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: '#/components/schemas/TokenPair'
+                        type: object
+                        properties:
+                          newToken:
+                            type: string
+                            description: JWT access token mới
+                            example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
               example:
                 message: "success"
                 data:
-                  accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                  refreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-        '400':
+                  newToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        '401':
           description: Thiếu refresh token hoặc token đã hết hạn / không hợp lệ
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorMessage'
+                allOf:
+                  - $ref: '#/components/schemas/ErrorMessage'
+                  - type: object
+                    properties:
+                      code:
+                        type: string
+                        example: "AUTH_REFRESH_TOKEN_EXPIRED"
               examples:
                 missing_token:
                   summary: Không truyền token
                   value:
-                    message: "Provide refresh token"
+                    message: "Refresh token not found"
+                    code: "AUTH_REFRESH_TOKEN_NOT_FOUND"
                 expired_token:
                   summary: Token đã hết hạn
                   value:
                     message: "Refresh token expired"
+                    code: "AUTH_REFRESH_TOKEN_EXPIRED"
 
   # ─────────────────────────────────────────────
   #  USER ENDPOINTS

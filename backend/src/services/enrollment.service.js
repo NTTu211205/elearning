@@ -157,8 +157,162 @@ const updateAverageScore = async (studentId, classId, averageScore) => {
     return { studentId, classId, averageScore };
 };
 
-// ─── DELETE ───────────────────────────────────────────────────────────────────
+// ─── STUDENT CLASSES WITH TESTS ───────────────────────────────────────────────
 
+/**
+ * Lấy danh sách lớp học của sinh viên kèm các bài thi và trạng thái làm bài.
+ */
+const getClassesWithTestsByStudent = async (studentId) => {
+    await userService.getUserById(studentId);
+
+    const [rows] = await db.execute(
+        `SELECT
+             c.id                                                            AS classId,
+             c.name                                                          AS className,
+             c.status                                                        AS classStatus,
+             c.createdAt                                                     AS classCreatedAt,
+             s.name                                                          AS subjectName,
+             t.id                                                            AS testId,
+             t.name                                                          AS testName,
+             t.turn                                                          AS maxTurns,
+             t.startAt,
+             t.endAt,
+             t.duration,
+             t.num_question,
+             COUNT(DISTINCT CASE WHEN de.status = 'DONE'  THEN de.id END)  AS doneTurns,
+             MAX(CASE WHEN de.status = 'DONE'  THEN de.score END)          AS bestScore,
+             MAX(CASE WHEN de.status = 'DOING' THEN de.id   END)           AS ongoingDoexamId
+         FROM enrollment e
+         JOIN class   c ON c.id = e.class_id
+         JOIN subject s ON s.id = c.subject_id
+         LEFT JOIN test t ON t.class_id = c.id
+         LEFT JOIN doexam de ON de.test_id = t.id AND de.student_id = e.student_id
+         WHERE e.student_id = ?
+         GROUP BY c.id, c.name, c.status, c.createdAt, s.name,
+                  t.id, t.name, t.turn, t.startAt, t.endAt, t.duration, t.num_question
+         ORDER BY c.createdAt DESC, t.startAt DESC`,
+        [studentId]
+    );
+
+    const classMap = new Map();
+    for (const row of rows) {
+        if (!classMap.has(row.classId)) {
+            classMap.set(row.classId, {
+                classId: row.classId,
+                className: row.className,
+                classStatus: row.classStatus,
+                subjectName: row.subjectName,
+                tests: [],
+            });
+        }
+        if (row.testId !== null) {
+            classMap.get(row.classId).tests.push({
+                testId: row.testId,
+                testName: row.testName,
+                maxTurns: row.maxTurns,
+                startAt: row.startAt,
+                endAt: row.endAt,
+                duration: row.duration,
+                numQuestion: row.num_question,
+                doneTurns: row.doneTurns,
+                bestScore: row.bestScore,
+                ongoingDoexamId: row.ongoingDoexamId,
+            });
+        }
+    }
+
+    return Array.from(classMap.values());
+};
+
+// ─── STUDENT DETAIL IN CLASS ──────────────────────────────────────────────────
+
+/**
+ * Lấy thông tin chi tiết một student trong lớp: profile + kết quả từng bài thi.
+ * Dùng cho trang teacher > class > student detail.
+ */
+const getStudentDetailInClass = async (classId, studentId) => {
+    const StudentAnswer = require('../models/StudentAnswer');
+
+    // Student profile + class info
+    const [profileRows] = await db.execute(
+        `SELECT u.id AS studentId, u.name AS studentName, u.email, u.phone, u.dob,
+                c.id AS classId, c.name AS className, s.name AS subjectName, s.id AS subjectId,
+                e.averageScore
+         FROM enrollment e
+         JOIN user    u ON u.id = e.student_id
+         JOIN class   c ON c.id = e.class_id
+         JOIN subject s ON s.id = c.subject_id
+         WHERE e.student_id = ? AND e.class_id = ?`,
+        [studentId, classId]
+    );
+    if (profileRows.length === 0) throw new Error('Student not enrolled in this class');
+    const profile = profileRows[0];
+
+    // All tests in the class
+    const [testRows] = await db.execute(
+        `SELECT t.id AS testId, t.name AS testName, t.num_question AS questionCount,
+                t.duration, t.startAt, t.endAt
+         FROM test t
+         WHERE t.class_id = ?
+         ORDER BY t.startAt DESC`,
+        [classId]
+    );
+
+    // Best DONE doexam per test for this student
+    const [doexamRows] = await db.execute(
+        `SELECT de.id AS doexamId, de.test_id AS testId, de.score, de.submitAt, de.turn
+         FROM doexam de
+         INNER JOIN (
+             SELECT test_id, MAX(score) AS maxScore
+             FROM doexam
+             WHERE student_id = ? AND status = 'DONE'
+             GROUP BY test_id
+         ) best ON de.test_id = best.test_id AND de.score = best.maxScore
+         WHERE de.student_id = ? AND de.status = 'DONE'`,
+        [studentId, studentId]
+    );
+
+    // Build doexam map (testId → best doexam)
+    const doexamMap = new Map();
+    for (const de of doexamRows) {
+        if (!doexamMap.has(de.testId)) doexamMap.set(de.testId, de);
+    }
+
+    // Fetch MongoDB StudentAnswer for each best doexam to get counts
+    const Question = require('../models/Question');
+    const tests = await Promise.all(testRows.map(async (t) => {
+        const de = doexamMap.get(t.testId);
+        if (!de) {
+            return { ...t, score: null, submitAt: null, turn: null, correctCount: 0, wrongCount: 0, skippedCount: 0 };
+        }
+
+        const savedDoc = await StudentAnswer.findOne({ doexamId: de.doexamId }).lean();
+        const savedAnswers = savedDoc?.answers ?? [];
+        const questions = await Question.find({ testId: Number(t.testId) }).lean();
+        const qMap = new Map(questions.map((q) => [q._id.toString(), q.correctIndex]));
+
+        let correct = 0, skipped = 0;
+        for (const ans of savedAnswers) {
+            if (ans.chosenIndex === null) skipped++;
+            else if (qMap.get(ans.questionId) === ans.chosenIndex) correct++;
+        }
+        const wrong = savedAnswers.length - correct - skipped;
+
+        return {
+            ...t,
+            score: de.score,
+            submitAt: de.submitAt,
+            turn: de.turn,
+            correctCount: correct,
+            wrongCount: Math.max(0, wrong),
+            skippedCount: skipped,
+        };
+    }));
+
+    return { profile, tests };
+};
+
+// ─── DELETE ───────────────────────────────────────────────────────────────────
 /**
  * Xóa một student khỏi một lớp học.
  */
@@ -197,6 +351,8 @@ module.exports = {
     getAllEnrollments,
     getStudentsByClass,
     getClassesByStudent,
+    getClassesWithTestsByStudent,
+    getStudentDetailInClass,
     updateAverageScore,
     removeStudent,
     removeAllStudentsFromClass,

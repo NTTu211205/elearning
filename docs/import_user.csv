@@ -1,0 +1,16 @@
+name,email,role,password,phone,dob
+Nguyễn Gia Hân,nguyengiahann01@gmail.com,student,123456,0913001001,2003-02-14
+Trần Quốc Bảo,tranquocbao02@gmail.com,student,123456,0913001002,2002-07-21
+Lê Minh Tâm,leminhtam03@gmail.com,student,123456,0913001003,2004-01-09
+Phạm Hoài Nam,phamhoainam04@gmail.com,student,123456,0913001004,2003-11-30
+Hoàng Nhật Vy,hoangnhatvy05@gmail.com,student,123456,0913001005,2002-05-17
+Võ Thanh Phúc,vothanhphuc06@gmail.com,student,123456,0913001006,2003-08-25
+Đặng Mỹ Linh,dangmylinh07@gmail.com,student,123456,0913001007,2004-03-12
+Bùi Khánh Duy,buikhanhduy08@gmail.com,student,123456,0913001008,2002-09-28
+Ngô Thảo Nhi,ngothaonhi09@gmail.com,student,123456,0913001009,2003-06-05
+Đỗ Anh Khoa,doanhkhoa10@gmail.com,student,123456,0913001010,2004-10-19
+Phan Tuấn Kiệt,phantuankiet11@gmail.com,teacher,123456,0913001011,1987-04-08
+Cao Ngọc Mai,caongocmai12@gmail.com,teacher,123456,0913001012,1990-12-22
+Lý Hoàng Sơn,lyhoangson13@gmail.com,teacher,123456,0913001013,1985-06-14
+Tạ Kim Ngân,takimngan14@gmail.com,teacher,123456,0913001014,1992-02-03
+Dương Đức Anh,duongducanh15@gmail.com,teacher,123456,0913001015,1988-09-11

@@ -1,4 +1,5 @@
 const testService = require('../services/test.service');
+const questionService = require('../services/question.service');
 
 // ─── CREATE ───────────────────────────────────────────────────────────────────
 
@@ -77,6 +78,59 @@ const updateTest = async (req, res) => {
     }
 };
 
+const getTestDetail = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await testService.getTestDetail(id);
+        res.status(200).json({ message: 'Success', data: result });
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+
+const getTestResults = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await testService.getTestResults(id);
+        res.status(200).json({ message: 'Success', data: result });
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+
+// ─── QUESTIONS (MongoDB) ──────────────────────────────────────────────────────
+
+const getTestQuestions = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const questions = await questionService.getQuestions(id);
+        res.status(200).json({ message: 'Success', data: questions });
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+
+/**
+ * Lưu (thay thế) toàn bộ câu hỏi của đề thi vào MongoDB,
+ * đồng thời cập nhật num_question trong MySQL.
+ */
+const saveTestQuestions = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { questions } = req.body;
+
+        await testService.getTestById(id);
+
+        const saved = await questionService.saveQuestions(id, questions ?? []);
+
+        await testService.updateNumQuestion(id, saved.length);
+
+        res.status(200).json({ message: 'Success', data: saved.length });
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+
 // ─── DELETE ───────────────────────────────────────────────────────────────────
 
 const deleteTest = async (req, res) => {
@@ -94,9 +148,13 @@ const deleteTest = async (req, res) => {
 module.exports = {
     addTest,
     getTest,
+    getTestDetail,
+    getTestResults,
     getAllTests,
     getTestsByClass,
     getTestsByCreator,
     updateTest,
     deleteTest,
+    getTestQuestions,
+    saveTestQuestions,
 };

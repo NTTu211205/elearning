@@ -1,5 +1,6 @@
-CREATE DATABASE IF NOT EXISTS ElearningDatabase;
+CREATE DATABASE IF NOT EXISTS ElearningDatabase CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 use ElearningDatabase;
+SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -10,11 +11,11 @@ CREATE TABLE `class` (
   `subject_id` int DEFAULT NULL,
   `teacher_id` int DEFAULT NULL,
   `quantity` int DEFAULT NULL,
-  `name` varchar(50) DEFAULT NULL,
+  `name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `createdAt` datetime DEFAULT NULL,
   `updatedAt` datetime DEFAULT NULL,
-  `status` ENUM('active', 'ended') NOT NULL DEFAULT 'active'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+  `status` ENUM('active', 'ended') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'active'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `doexam` (
   `id` int NOT NULL PRIMARY KEY AUTO_INCREMENT,
@@ -38,7 +39,7 @@ CREATE TABLE `subject` (
   `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `lessons` int(11) DEFAULT NULL,
   `status` tinyint(1) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `test` (
   `id` int NOT NULL PRIMARY KEY AUTO_INCREMENT,
@@ -50,29 +51,29 @@ CREATE TABLE `test` (
   `endAt` datetime DEFAULT NULL,
   `duration` int NOT NULL,
   `num_question` int NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `user` (
   `id` int NOT NULL PRIMARY KEY AUTO_INCREMENT,
   `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `dob` date DEFAULT NULL,
-  `role` varchar(10) DEFAULT NULL,
-  `email` varchar(50) DEFAULT NULL,
-  `phone` varchar(10) DEFAULT NULL,
+  `role` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `email` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `phone` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `status` tinyint(1) DEFAULT NULL,
-  `password` varchar(255) DEFAULT NULL,
+  `password` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `createdAt` datetime DEFAULT NULL,
   `updatedAt` datetime DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE refresh_tokens (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
-    token TEXT NOT NULL,
+  token TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
     expires_at DATETIME NOT NULL,
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 ALTER TABLE `class`
   ADD KEY `subject_id` (`subject_id`),
@@ -137,19 +138,19 @@ SET FOREIGN_KEY_CHECKS = 0;
 --    password hash của '123456' (bcrypt)
 -- ============================================================
 INSERT INTO `user` (id, name, dob, role, email, phone, status, password, createdAt, updatedAt) VALUES
-(1,  'Nguyễn Văn An',    '1985-03-12', 'teacher', 'nguyenvanan@elearning.vn',    '0901111001', 1, '$2b$10$eW5y6zQkL1HpR3mN8uVtOeKjP2sXdFgYwBqCvAmZoTnUhIlDrJsKu', '2025-01-10 08:00:00', '2025-01-10 08:00:00'),
-(2,  'Trần Thị Bình',    '1988-07-25', 'teacher', 'tranthihinh@elearning.vn',    '0901111002', 1, '$2b$10$eW5y6zQkL1HpR3mN8uVtOeKjP2sXdFgYwBqCvAmZoTnUhIlDrJsKu', '2025-01-10 08:05:00', '2025-01-10 08:05:00'),
-(3,  'Lê Minh Cường',    '1990-11-08', 'teacher', 'leminhcuong@elearning.vn',    '0901111003', 1, '$2b$10$eW5y6zQkL1HpR3mN8uVtOeKjP2sXdFgYwBqCvAmZoTnUhIlDrJsKu', '2025-01-11 09:00:00', '2025-01-11 09:00:00'),
-(4,  'Phạm Thị Dung',    '1992-05-18', 'student', 'phamthidung@gmail.com',       '0912222001', 1, '$2b$10$eW5y6zQkL1HpR3mN8uVtOeKjP2sXdFgYwBqCvAmZoTnUhIlDrJsKu', '2025-02-01 10:00:00', '2025-02-01 10:00:00'),
-(5,  'Hoàng Văn Em',     '2003-09-30', 'student', 'hoangvanem@gmail.com',        '0912222002', 1, '$2b$10$eW5y6zQkL1HpR3mN8uVtOeKjP2sXdFgYwBqCvAmZoTnUhIlDrJsKu', '2025-02-01 10:10:00', '2025-02-01 10:10:00'),
-(6,  'Vũ Thị Phương',    '2002-12-14', 'student', 'vuthiphuong@gmail.com',       '0912222003', 1, '$2b$10$eW5y6zQkL1HpR3mN8uVtOeKjP2sXdFgYwBqCvAmZoTnUhIlDrJsKu', '2025-02-02 08:30:00', '2025-02-02 08:30:00'),
-(7,  'Đặng Quốc Huy',    '2003-04-22', 'student', 'dangquochuy@gmail.com',       '0912222004', 1, '$2b$10$eW5y6zQkL1HpR3mN8uVtOeKjP2sXdFgYwBqCvAmZoTnUhIlDrJsKu', '2025-02-02 09:00:00', '2025-02-02 09:00:00'),
-(8,  'Ngô Thị Lan',      '2004-01-05', 'student', 'ngothilan@gmail.com',         '0912222005', 1, '$2b$10$eW5y6zQkL1HpR3mN8uVtOeKjP2sXdFgYwBqCvAmZoTnUhIlDrJsKu', '2025-02-03 10:15:00', '2025-02-03 10:15:00'),
-(9,  'Bùi Văn Minh',     '2003-08-19', 'student', 'buivanminh@gmail.com',        '0912222006', 1, '$2b$10$eW5y6zQkL1HpR3mN8uVtOeKjP2sXdFgYwBqCvAmZoTnUhIlDrJsKu', '2025-02-03 10:30:00', '2025-02-03 10:30:00'),
-(10, 'Đinh Thị Nga',     '2002-06-27', 'student', 'dinhthinag@gmail.com',        '0912222007', 1, '$2b$10$eW5y6zQkL1HpR3mN8uVtOeKjP2sXdFgYwBqCvAmZoTnUhIlDrJsKu', '2025-02-04 08:00:00', '2025-02-04 08:00:00'),
-(11, 'Cao Văn Ổn',       '2004-03-11', 'student', 'caovanon@gmail.com',          '0912222008', 1, '$2b$10$eW5y6zQkL1HpR3mN8uVtOeKjP2sXdFgYwBqCvAmZoTnUhIlDrJsKu', '2025-02-04 08:30:00', '2025-02-04 08:30:00'),
-(12, 'Lý Thị Phượng',    '2003-11-02', 'student', 'lythiphuong@gmail.com',       '0912222009', 1, '$2b$10$eW5y6zQkL1HpR3mN8uVtOeKjP2sXdFgYwBqCvAmZoTnUhIlDrJsKu', '2025-02-05 09:00:00', '2025-02-05 09:00:00'),
-(13, 'Admin Hệ Thống',   '1980-01-01', 'admin',   'admin@elearning.vn',          '0900000001', 1, '$2b$10$eW5y6zQkL1HpR3mN8uVtOeKjP2sXdFgYwBqCvAmZoTnUhIlDrJsKu', '2025-01-01 00:00:00', '2025-01-01 00:00:00');
+(1,  'Nguyễn Văn An',    '1985-03-12', 'teacher', 'nguyenvanan@gmail.com',    '0901111001', 1, '$2a$12$oiwwPvK8FuInO4MYtmAzcOYfi7VdRDbh/.vvK//O3IkWdjKG4wP/W', '2025-01-10 08:00:00', '2025-01-10 08:00:00'),
+(2,  'Trần Thị Bình',    '1988-07-25', 'teacher', 'tranthihinh@gmail.com',    '0901111002', 1, '$2a$12$oiwwPvK8FuInO4MYtmAzcOYfi7VdRDbh/.vvK//O3IkWdjKG4wP/W', '2025-01-10 08:05:00', '2025-01-10 08:05:00'),
+(3,  'Lê Minh Cường',    '1990-11-08', 'teacher', 'leminhcuong@gmail.com',    '0901111003', 1, '$2a$12$oiwwPvK8FuInO4MYtmAzcOYfi7VdRDbh/.vvK//O3IkWdjKG4wP/W', '2025-01-11 09:00:00', '2025-01-11 09:00:00'),
+(4,  'Phạm Thị Dung',    '1992-05-18', 'student', 'phamthidung@gmail.com',       '0912222001', 1, '$2a$12$oiwwPvK8FuInO4MYtmAzcOYfi7VdRDbh/.vvK//O3IkWdjKG4wP/W', '2025-02-01 10:00:00', '2025-02-01 10:00:00'),
+(5,  'Hoàng Văn Em',     '2003-09-30', 'student', 'hoangvanem@gmail.com',        '0912222002', 1, '$2a$12$oiwwPvK8FuInO4MYtmAzcOYfi7VdRDbh/.vvK//O3IkWdjKG4wP/W', '2025-02-01 10:10:00', '2025-02-01 10:10:00'),
+(6,  'Vũ Thị Phương',    '2002-12-14', 'student', 'vuthiphuong@gmail.com',       '0912222003', 1, '$2a$12$oiwwPvK8FuInO4MYtmAzcOYfi7VdRDbh/.vvK//O3IkWdjKG4wP/W', '2025-02-02 08:30:00', '2025-02-02 08:30:00'),
+(7,  'Đặng Quốc Huy',    '2003-04-22', 'student', 'dangquochuy@gmail.com',       '0912222004', 1, '$2a$12$oiwwPvK8FuInO4MYtmAzcOYfi7VdRDbh/.vvK//O3IkWdjKG4wP/W', '2025-02-02 09:00:00', '2025-02-02 09:00:00'),
+(8,  'Ngô Thị Lan',      '2004-01-05', 'student', 'ngothilan@gmail.com',         '0912222005', 1, '$2a$12$oiwwPvK8FuInO4MYtmAzcOYfi7VdRDbh/.vvK//O3IkWdjKG4wP/W', '2025-02-03 10:15:00', '2025-02-03 10:15:00'),
+(9,  'Bùi Văn Minh',     '2003-08-19', 'student', 'buivanminh@gmail.com',        '0912222006', 1, '$2a$12$oiwwPvK8FuInO4MYtmAzcOYfi7VdRDbh/.vvK//O3IkWdjKG4wP/W', '2025-02-03 10:30:00', '2025-02-03 10:30:00'),
+(10, 'Đinh Thị Nga',     '2002-06-27', 'student', 'dinhthinag@gmail.com',        '0912222007', 1, '$2a$12$oiwwPvK8FuInO4MYtmAzcOYfi7VdRDbh/.vvK//O3IkWdjKG4wP/W', '2025-02-04 08:00:00', '2025-02-04 08:00:00'),
+(11, 'Cao Văn Ổn',       '2004-03-11', 'student', 'caovanon@gmail.com',          '0912222008', 1, '$2a$12$oiwwPvK8FuInO4MYtmAzcOYfi7VdRDbh/.vvK//O3IkWdjKG4wP/W', '2025-02-04 08:30:00', '2025-02-04 08:30:00'),
+(12, 'Lý Thị Phượng',    '2003-11-02', 'student', 'lythiphuong@gmail.com',       '0912222009', 1, '$2a$12$oiwwPvK8FuInO4MYtmAzcOYfi7VdRDbh/.vvK//O3IkWdjKG4wP/W', '2025-02-05 09:00:00', '2025-02-05 09:00:00'),
+(13, 'Admin Hệ Thống',   '1980-01-01', 'admin',   'admin@gmail.com',          '0900000001', 1, '$2a$12$oiwwPvK8FuInO4MYtmAzcOYfi7VdRDbh/.vvK//O3IkWdjKG4wP/W', '2025-01-01 00:00:00', '2025-01-01 00:00:00');
 
 
 -- ============================================================

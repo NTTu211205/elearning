@@ -66,11 +66,22 @@ const getTestsByClassId = async (classId) => {
     await classService.getClassById(classId);
 
     const [result] = await db.execute(
-        `SELECT t.id, t.name, t.turn, t.startAt, t.endAt, t.duration, t.num_question,
-                u.name AS createdByName
+        `SELECT
+             t.id,
+             t.name,
+             t.turn,
+             t.startAt,
+             t.endAt,
+             t.duration,
+             t.num_question,
+             u.name AS createdByName,
+             COUNT(DISTINCT CASE WHEN de.status = 'DONE' THEN de.student_id END) AS submittedCount,
+             ROUND(AVG(CASE WHEN de.status = 'DONE' THEN de.score END), 1)       AS avgScore
          FROM test t
-         LEFT JOIN user u ON u.id = t.createBy
+         LEFT JOIN user u     ON u.id = t.createBy
+         LEFT JOIN doexam de  ON de.test_id = t.id
          WHERE t.class_id = ?
+         GROUP BY t.id, t.name, t.turn, t.startAt, t.endAt, t.duration, t.num_question, u.name
          ORDER BY t.startAt DESC`,
         [classId]
     );
@@ -95,6 +106,63 @@ const getTestsByCreator = async (creatorId) => {
     );
 
     return result;
+};
+
+/**
+ * Lấy thông tin chi tiết đề thi kèm tên lớp và môn học.
+ */
+const getTestDetail = async (id) => {
+    const [rows] = await db.execute(
+        `SELECT t.id, t.name, t.class_id, t.createBy, t.turn, t.startAt, t.endAt,
+                t.duration, t.num_question,
+                c.name AS className, c.subject_id AS subjectId,
+                s.name AS subjectName
+         FROM test t
+         LEFT JOIN class c ON c.id = t.class_id
+         LEFT JOIN subject s ON s.id = c.subject_id
+         WHERE t.id = ?`,
+        [id]
+    );
+    if (rows.length === 0) throw new Error('Test not found');
+    return rows[0];
+};
+
+/**
+ * Lấy kết quả làm bài của tất cả học sinh đã đăng ký lớp chứa đề thi.
+ * Với mỗi học sinh, lấy lượt làm có điểm cao nhất.
+ */
+const getTestResults = async (testId) => {
+    const [rows] = await db.execute(
+        `SELECT
+            u.id            AS studentId,
+            u.name          AS studentName,
+            c.id            AS classId,
+            c.name          AS className,
+            c.subject_id    AS subjectId,
+            t.num_question  AS totalQuestions,
+            (
+                SELECT d.score
+                FROM doexam d
+                WHERE d.student_id = u.id AND d.test_id = t.id
+                ORDER BY d.score DESC
+                LIMIT 1
+            ) AS score,
+            (
+                SELECT d.submitAt
+                FROM doexam d
+                WHERE d.student_id = u.id AND d.test_id = t.id
+                ORDER BY d.score DESC
+                LIMIT 1
+            ) AS submitAt
+         FROM test t
+         JOIN class c       ON c.id = t.class_id
+         JOIN enrollment e  ON e.class_id = t.class_id
+         JOIN user u        ON u.id = e.student_id
+         WHERE t.id = ?
+         ORDER BY score DESC, u.name ASC`,
+        [testId]
+    );
+    return rows;
 };
 
 // ─── UPDATE ───────────────────────────────────────────────────────────────────
@@ -139,12 +207,25 @@ const deleteTest = async (id) => {
     return true;
 };
 
+/**
+ * Cập nhật số câu hỏi của một đề thi (sau khi lưu câu hỏi vào MongoDB).
+ */
+const updateNumQuestion = async (id, numQuestion) => {
+    await db.execute(
+        'UPDATE test SET num_question = ? WHERE id = ?',
+        [numQuestion, id]
+    );
+};
+
 module.exports = {
     createTest,
     getTestById,
+    getTestDetail,
+    getTestResults,
     getAllTests,
     getTestsByClassId,
     getTestsByCreator,
     updateTest,
+    updateNumQuestion,
     deleteTest,
 };
