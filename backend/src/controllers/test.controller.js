@@ -137,7 +137,8 @@ const deleteTest = async (req, res) => {
     try {
         const { id } = req.params;
 
-        await testService.deleteTest(id);
+        await testService.deleteTest(id);           // MySQL: xóa doexam + test
+        await questionService.deleteQuestions(id);  // MongoDB: xóa QuestionBank
 
         res.status(200).json({ message: 'Success' });
     } catch (error) {

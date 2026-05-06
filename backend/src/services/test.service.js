@@ -2,6 +2,14 @@ const db = require('../config/MySQLConnect');
 const classService = require('./class.service');
 const userService = require('./user.service');
 
+/**
+ * Chuyển chuỗi ISO 8601 sang định dạng MySQL DATETIME: 'YYYY-MM-DD HH:MM:SS'
+ */
+const toMySQLDatetime = (isoStr) => {
+    if (!isoStr) return null;
+    return new Date(isoStr).toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, '');
+};
+
 // ─── CREATE ───────────────────────────────────────────────────────────────────
 
 /**
@@ -23,7 +31,7 @@ const createTest = async (testData) => {
     const [result] = await db.execute(
         `INSERT INTO test (name, class_id, createBy, turn, startAt, endAt, duration, num_question)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [name, classId, createBy, turn ?? 1, startAt, endAt, duration, numQuestion]
+        [name, classId, createBy, turn ?? 1, toMySQLDatetime(startAt), toMySQLDatetime(endAt), duration, numQuestion]
     );
 
     return {
@@ -182,7 +190,7 @@ const updateTest = async (testData) => {
         `UPDATE test
          SET name = ?, class_id = ?, turn = ?, startAt = ?, endAt = ?, duration = ?, num_question = ?
          WHERE id = ?`,
-        [name, classId, turn, startAt, endAt, duration, numQuestion, id]
+        [name, classId, turn, toMySQLDatetime(startAt), toMySQLDatetime(endAt), duration, numQuestion, id]
     );
 
     if (result.affectedRows === 0) {
@@ -198,6 +206,9 @@ const updateTest = async (testData) => {
  * Xóa đề thi theo ID.
  */
 const deleteTest = async (id) => {
+    // Xóa doexam trước để tránh lỗi FK constraint
+    await db.execute('DELETE FROM doexam WHERE test_id = ?', [id]);
+
     const [result] = await db.execute('DELETE FROM test WHERE id = ?', [id]);
 
     if (result.affectedRows === 0) {

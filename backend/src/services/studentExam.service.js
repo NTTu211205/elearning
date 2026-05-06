@@ -1,6 +1,7 @@
 const db = require('../config/MySQLConnect');
-const Question = require('../models/Question');
+const QuestionBank = require('../models/QuestionBank');
 const StudentAnswer = require('../models/StudentAnswer');
+const ExamLog = require('../models/ExamLog');
 
 // ─── START EXAM ────────────────────────────────────────────────────────────────
 
@@ -40,6 +41,8 @@ const startExam = async (studentId, testId) => {
     if (doingRows.length > 0) {
         const doexamId = doingRows[0].id;
         const savedDoc = await StudentAnswer.findOne({ doexamId }).lean();
+        // Log RESUME (fire-and-forget)
+        ExamLog.create({ doexamId, studentId: Number(studentId), testId: Number(testId), event: 'RESUME' }).catch(() => {});
         return { doexamId, isResume: true, attendAt: doingRows[0].attendAt, savedAnswers: savedDoc?.answers ?? [] };
     }
 
@@ -60,13 +63,16 @@ const startExam = async (studentId, testId) => {
     const doexamId = insertResult.insertId;
 
     // Lấy câu hỏi và tạo StudentAnswer doc ban đầu (tất cả null)
-    const questions = await Question.find({ testId: Number(testId) }).sort({ order: 1 }).lean();
+    const bank1 = await QuestionBank.findOne({ testId: Number(testId) }).lean();
+    const questions = bank1 ? [...bank1.questions].sort((a, b) => a.order - b.order) : [];
     const initialAnswers = questions.map((q) => ({
         questionId: q._id.toString(),
         chosenIndex: null,
     }));
 
     await StudentAnswer.create({ doexamId, testId: Number(testId), studentId: Number(studentId), answers: initialAnswers });
+    // Log START (fire-and-forget)
+    ExamLog.create({ doexamId, studentId: Number(studentId), testId: Number(testId), event: 'START' }).catch(() => {});
 
     return { doexamId, isResume: false, attendAt: new Date(), savedAnswers: initialAnswers };
 };
@@ -92,7 +98,8 @@ const getExamSession = async (doexamId) => {
     const savedAnswers = savedDoc?.answers ?? [];
 
     // Lấy câu hỏi (ẩn correctIndex để tránh lộ đáp án)
-    const questions = await Question.find({ testId: Number(session.test_id) }).sort({ order: 1 }).lean();
+    const bank2 = await QuestionBank.findOne({ testId: Number(session.test_id) }).lean();
+    const questions = bank2 ? [...bank2.questions].sort((a, b) => a.order - b.order) : [];
     const questionsForStudent = questions.map((q) => ({
         id: q._id.toString(),
         text: q.text,
@@ -150,7 +157,8 @@ const submitExam = async (doexamId, answers) => {
     );
 
     // Lấy đáp án đúng từ MongoDB
-    const questions = await Question.find({ testId: Number(testId) }).sort({ order: 1 }).lean();
+    const bank3 = await QuestionBank.findOne({ testId: Number(testId) }).lean();
+    const questions = bank3 ? bank3.questions : [];
     const qMap = new Map(questions.map((q) => [q._id.toString(), q.correctIndex]));
 
     let correct = 0;
@@ -184,13 +192,12 @@ const submitExam = async (doexamId, answers) => {
         [studentId, classId, studentId, classId]
     );
 
-    return {
-        score,
-        correctCount: correct,
-        totalQuestions: totalQ,
-        wrongCount: answers.filter(a => a.chosenIndex !== null && qMap.get(a.questionId) !== a.chosenIndex).length,
-        skippedCount: answers.filter(a => a.chosenIndex === null).length,
-    };
+    const wrongCount  = answers.filter(a => a.chosenIndex !== null && qMap.get(a.questionId) !== a.chosenIndex).length;
+    const skippedCount = answers.filter(a => a.chosenIndex === null).length;
+    // Log SUBMIT (fire-and-forget)
+    ExamLog.create({ doexamId: Number(doexamId), studentId: Number(studentId), testId: Number(testId), event: 'SUBMIT', data: { score, correct, totalQ, wrongCount, skippedCount } }).catch(() => {});
+
+    return { score, correctCount: correct, totalQuestions: totalQ, wrongCount, skippedCount };
 };
 
 // ─── GET RESULT ────────────────────────────────────────────────────────────────
@@ -219,7 +226,8 @@ const getExamResult = async (doexamId) => {
     const savedDoc = await StudentAnswer.findOne({ doexamId: Number(doexamId) }).lean();
     const savedAnswers = savedDoc?.answers ?? [];
 
-    const questions = await Question.find({ testId: Number(session.test_id) }).sort({ order: 1 }).lean();
+    const bank4 = await QuestionBank.findOne({ testId: Number(session.test_id) }).lean();
+    const questions = bank4 ? [...bank4.questions].sort((a, b) => a.order - b.order) : [];
 
     const answers = questions.map((q, i) => {
         const ans = savedAnswers.find(a => a.questionId === q._id.toString());
@@ -264,7 +272,8 @@ const getSubmissionByStudentTest = async (studentId, testId) => {
     const savedDoc = await StudentAnswer.findOne({ doexamId: Number(session.id) }).lean();
     const savedAnswers = savedDoc?.answers ?? [];
 
-    const questions = await Question.find({ testId: Number(testId) }).sort({ order: 1 }).lean();
+    const bank5 = await QuestionBank.findOne({ testId: Number(testId) }).lean();
+    const questions = bank5 ? [...bank5.questions].sort((a, b) => a.order - b.order) : [];
 
     const answers = questions.map((q, i) => {
         const ans = savedAnswers.find(a => a.questionId === q._id.toString());

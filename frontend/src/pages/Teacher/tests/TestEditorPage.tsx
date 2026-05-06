@@ -82,6 +82,84 @@ const parseTextFormat = (raw: string): Question[] => {
   return questions;
 };
 
+/**
+ * Parse HTML từ mammoth → Question[].
+ * Nhận diện đáp án đúng bằng:
+ *   - Dấu * trước nhãn đáp án: *A. ...
+ *   - In đậm (<strong>/<b>) toàn/một phần của dòng đáp án
+ * Nếu cả hai phương pháp chỉ ra đáp án KHÁC NHAU → correctIndex = -1 (teacher tự chọn)
+ */
+const parseHtmlToQuestions = (html: string): Question[] => {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+  const elements = Array.from(doc.querySelectorAll('p, li'));
+
+  type OptItem = { label: string; text: string; hasStar: boolean; isBold: boolean };
+  const result: Question[] = [];
+  let qText = '';
+  let opts: OptItem[] = [];
+
+  const flush = () => {
+    if (opts.length < 2) { qText = ''; opts = []; return; }
+    const q = makeQuestion();
+    q.text = qText;
+    q.options = opts.map(o => ({ label: o.label, text: o.text }));
+
+    const starIdx  = opts.findIndex(o => o.hasStar);
+    const boldIdxs = opts.reduce<number[]>((acc, o, i) => (o.isBold ? [...acc, i] : acc), []);
+
+    if (starIdx !== -1 && boldIdxs.length === 0) {
+      q.correctIndex = starIdx;
+    } else if (starIdx === -1 && boldIdxs.length === 1) {
+      q.correctIndex = boldIdxs[0];
+    } else if (starIdx !== -1 && boldIdxs.length === 1) {
+      q.correctIndex = starIdx === boldIdxs[0] ? starIdx : -1; // khác nhau → xung đột
+    } else {
+      q.correctIndex = 0;
+    }
+
+    result.push(q);
+    qText = ''; opts = [];
+  };
+
+  for (const el of elements) {
+    const rawText = el.textContent?.trim() || '';
+    if (!rawText) continue;
+    const isBold = Boolean(el.querySelector('strong, b'));
+
+    // Dòng câu hỏi: "câu N:" hoặc "câu N."
+    const qMatch = rawText.match(/^câu\s+\d+[:.]\s*(.*)/i);
+    if (qMatch) { flush(); qText = qMatch[1].trim(); continue; }
+
+    // Dòng đáp án: [*]A. hoặc [*]A)
+    const optMatch = rawText.match(/^(\*?)([A-Fa-f])[.)]\s*(.*)/);
+    if (optMatch) {
+      opts.push({
+        label:   optMatch[2].toUpperCase(),
+        text:    optMatch[3].trim(),
+        hasStar: optMatch[1] === '*',
+        isBold,
+      });
+      continue;
+    }
+
+    // Dòng không phải đáp án → kết thúc block hiện tại
+    if (opts.length > 0) flush();
+    qText = rawText;
+  }
+  flush();
+  return result;
+};
+
+/** Parse file .docx (dùng mammoth) → Question[] */
+const parseDocxFile = async (file: File): Promise<Question[]> => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mammoth = (await import('mammoth')) as any;
+  const arrayBuffer = await file.arrayBuffer();
+  const { value: html } = await (mammoth.default ?? mammoth).convertToHtml({ arrayBuffer });
+  return parseHtmlToQuestions(html);
+};
+
 /** Điểm mỗi câu = 10 / tổng số câu (làm tròn 2 chữ số) */
 const scorePerQuestion = (total: number) =>
   total === 0 ? 0 : Math.round((10 / total) * 100) / 100;
@@ -332,10 +410,13 @@ const ImportModal = ({
       <div className="w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-xl">
         <h3 className="text-base font-semibold text-foreground mb-1">Import đề thi</h3>
         <p className="text-sm text-muted-foreground mb-4">
-          Chọn file .docx hoặc .pdf chứa nội dung câu hỏi theo định dạng:
+          Chọn file <strong>.docx</strong> — Đáp án đúng nhận diện qua:
           <br />
-          <code className="text-xs bg-muted px-1 rounded">Câu 1: ...</code> và{" "}
-          <code className="text-xs bg-muted px-1 rounded">*A. ...</code>
+          <code className="text-xs bg-muted px-1 rounded">*A. ...</code> — dấu sao trước nhãn đáp án
+          <br />
+          <code className="text-xs bg-muted px-1 rounded">A. <strong>đáp án in đậm</strong></code> — định dạng in đậm trong Word
+          <br />
+          <span className="text-[11px] text-muted-foreground">Nếu hai phương pháp chỉ ra đáp án khác nhau → để trống (tự chọn thủ công)</span>
         </p>
         <div
           className="flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-border p-6 cursor-pointer hover:border-primary transition-colors"
@@ -343,12 +424,12 @@ const ImportModal = ({
         >
           <Upload className="size-8 text-muted-foreground" />
           <span className="text-sm text-muted-foreground">Nhấn để chọn file</span>
-          <span className="text-xs text-muted-foreground">.docx, .pdf</span>
+          <span className="text-xs text-muted-foreground">.docx</span>
         </div>
         <input
           ref={inputRef}
           type="file"
-          accept=".docx,.pdf"
+          accept=".docx"
           className="hidden"
           onChange={(e) => {
             if (e.target.files?.[0]) {
@@ -520,8 +601,33 @@ const TestEditorPage = () => {
     setGoToInput(String(i + 1));
   };
 
-  const handleImport = (_file: File) => {
-    toast.info("Import file đề thi đang được xử lý (chức năng cần backend).");
+const handleImport = async (file: File) => {
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    try {
+      let imported: Question[] = [];
+      if (ext === 'docx') {
+        imported = await parseDocxFile(file);
+      } else {
+        toast.error('Chỉ hỗ trợ file .docx');
+        return;
+      }
+      if (imported.length === 0) {
+        toast.error('Không tìm thấy câu hỏi trong file. Kiểm tra lại định dạng.');
+        return;
+      }
+      const conflictCount = imported.filter(q => q.correctIndex < 0).length;
+      setQuestions(imported);
+      setActiveIndex(0);
+      setGoToInput('1');
+      syncTextFromQuestions(imported);
+      if (conflictCount > 0) {
+        toast.warning(`Import ${imported.length} câu — ${conflictCount} câu chưa xác định được đáp án đúng (cần chọn thủ công)`);
+      } else {
+        toast.success(`Đã import ${imported.length} câu hỏi`);
+      }
+    } catch {
+      toast.error('Lỗi khi đọc file, vui lòng kiểm tra định dạng');
+    }
   };
 
   /** Gọi API lưu đề thi — được await bởi TestSettingsModal (isSubmitting) */

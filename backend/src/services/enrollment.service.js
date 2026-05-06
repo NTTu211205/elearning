@@ -279,7 +279,7 @@ const getStudentDetailInClass = async (classId, studentId) => {
     }
 
     // Fetch MongoDB StudentAnswer for each best doexam to get counts
-    const Question = require('../models/Question');
+    const QuestionBank = require('../models/QuestionBank');
     const tests = await Promise.all(testRows.map(async (t) => {
         const de = doexamMap.get(t.testId);
         if (!de) {
@@ -288,7 +288,8 @@ const getStudentDetailInClass = async (classId, studentId) => {
 
         const savedDoc = await StudentAnswer.findOne({ doexamId: de.doexamId }).lean();
         const savedAnswers = savedDoc?.answers ?? [];
-        const questions = await Question.find({ testId: Number(t.testId) }).lean();
+        const bank = await QuestionBank.findOne({ testId: Number(t.testId) }).lean();
+        const questions = bank ? bank.questions : [];
         const qMap = new Map(questions.map((q) => [q._id.toString(), q.correctIndex]));
 
         let correct = 0, skipped = 0;
