@@ -15,3 +15,4 @@ export const editClassSchema = z.object({
 });
 
 export type EditClassFormValues = z.infer<typeof editClassSchema>;
+export type CreateClassFormValues = z.infer<typeof createClassSchema>;

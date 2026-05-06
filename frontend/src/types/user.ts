@@ -1,12 +1,11 @@
 type Role = "student" | "teacher" | "admin";
-type UserStatus = "active" | "inactive";
 
 interface User {
   id: number;
   name: string;
   role: Role;
   email: string;
-  status?: UserStatus;
+  status?: number;  // tinyint: 1=active, 0=inactive
   avatar?: string;
   dob?: string;
   phone?: string;
@@ -14,4 +13,4 @@ interface User {
   updatedAt?: string;
 }
 
-export type { User, Role, UserStatus };
+export type { User, Role };

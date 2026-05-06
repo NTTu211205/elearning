@@ -92,4 +92,15 @@ const getAll = async(req, res) => {
     }
 }
 
-module.exports = {addSubject, getSubjectById, updateSubjectInfo, deleteSubject, getAll};
+// toggle subject status
+const toggleSubjectStatus = async (req, res) => {
+    try {
+        const {id} = req.params;
+        const result = await subjectService.toggleSubjectStatus(id);
+        res.status(200).json({ message: 'Success', data: result });
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+
+module.exports = {addSubject, getSubjectById, updateSubjectInfo, deleteSubject, getAll, toggleSubjectStatus};

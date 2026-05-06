@@ -25,7 +25,7 @@ const createUser = async (userData) => {
 
 //get all user include: active and non-active
 const getAllUser = async() => {
-    const [result] = await db.execute('SELECT id, name, dob, role, email, phone FROM user');
+    const [result] = await db.execute('SELECT id, name, dob, role, email, phone, status FROM user');
     return result;
 }
 
@@ -33,7 +33,7 @@ const getUserFollowingStatus = async(status) => {
     if (!status) {
         throw new Error('Status not valid');
     }
-    const [result] = await db.execute('SELECT id, name, dob, role, email, phone FROM user WHERE status = ?', [status]);
+    const [result] = await db.execute('SELECT id, name, dob, role, email, phone, status FROM user WHERE status = ?', [status]);
     return result;
 }
 
@@ -138,4 +138,13 @@ const changePassword = async (id, oldPassword, newPassword) => {
     return true;
 };
 
-module.exports = {createUser, getAllUser, deleteUser, updateUser, getUserById, getUserFollowingStatus, getTeacherById, bulkCreateUsers, updateProfile, changePassword};
+// toggle user status (1 → 0, 0 → 1)
+const toggleUserStatus = async (id) => {
+    const [rows] = await db.execute('SELECT status FROM user WHERE id = ?', [id]);
+    if (rows.length === 0) throw new Error('User not exist');
+    const newStatus = rows[0].status === 1 ? 0 : 1;
+    await db.execute('UPDATE user SET status = ? WHERE id = ?', [newStatus, id]);
+    return { id: Number(id), status: newStatus };
+};
+
+module.exports = {createUser, getAllUser, deleteUser, updateUser, getUserById, getUserFollowingStatus, getTeacherById, bulkCreateUsers, updateProfile, changePassword, toggleUserStatus};

@@ -17,7 +17,7 @@ const toMySQLDatetime = (isoStr) => {
  * Validate class_id và createBy trước khi insert.
  */
 const createTest = async (testData) => {
-    const { name, classId, createBy, turn, startAt, endAt, duration, numQuestion } = testData;
+    const { name, classId, createBy, turn, startAt, endAt, duration, numQuestion, type } = testData;
 
     // Validate lớp học tồn tại
     await classService.getClassById(classId);
@@ -28,10 +28,12 @@ const createTest = async (testData) => {
         throw new Error('Only teacher or admin can create a test');
     }
 
+    const testType = type || 'regular';
+
     const [result] = await db.execute(
-        `INSERT INTO test (name, class_id, createBy, turn, startAt, endAt, duration, num_question)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [name, classId, createBy, turn ?? 1, toMySQLDatetime(startAt), toMySQLDatetime(endAt), duration, numQuestion]
+        `INSERT INTO test (name, class_id, createBy, turn, startAt, endAt, duration, num_question, type)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [name, classId, createBy, turn ?? 1, toMySQLDatetime(startAt), toMySQLDatetime(endAt), duration, numQuestion, testType]
     );
 
     return {
@@ -39,7 +41,7 @@ const createTest = async (testData) => {
         name, classId, createBy,
         turn: turn ?? 1,
         startAt, endAt, duration,
-        numQuestion
+        numQuestion, type: testType
     };
 };
 
@@ -82,6 +84,7 @@ const getTestsByClassId = async (classId) => {
              t.endAt,
              t.duration,
              t.num_question,
+             t.type,
              u.name AS createdByName,
              COUNT(DISTINCT CASE WHEN de.status = 'DONE' THEN de.student_id END) AS submittedCount,
              ROUND(AVG(CASE WHEN de.status = 'DONE' THEN de.score END), 1)       AS avgScore
@@ -89,7 +92,7 @@ const getTestsByClassId = async (classId) => {
          LEFT JOIN user u     ON u.id = t.createBy
          LEFT JOIN doexam de  ON de.test_id = t.id
          WHERE t.class_id = ?
-         GROUP BY t.id, t.name, t.turn, t.startAt, t.endAt, t.duration, t.num_question, u.name
+         GROUP BY t.id, t.name, t.turn, t.startAt, t.endAt, t.duration, t.num_question, t.type, u.name
          ORDER BY t.startAt DESC`,
         [classId]
     );
@@ -104,7 +107,7 @@ const getTestsByCreator = async (creatorId) => {
     await userService.getUserById(creatorId);
 
     const [result] = await db.execute(
-        `SELECT t.id, t.name, t.class_id, t.turn, t.startAt, t.endAt, t.duration, t.num_question,
+        `SELECT t.id, t.name, t.class_id, t.turn, t.startAt, t.endAt, t.duration, t.num_question, t.type,
                 c.name AS className
          FROM test t
          LEFT JOIN class c ON c.id = t.class_id
@@ -122,7 +125,7 @@ const getTestsByCreator = async (creatorId) => {
 const getTestDetail = async (id) => {
     const [rows] = await db.execute(
         `SELECT t.id, t.name, t.class_id, t.createBy, t.turn, t.startAt, t.endAt,
-                t.duration, t.num_question,
+                t.duration, t.num_question, t.type,
                 c.name AS className, c.subject_id AS subjectId,
                 s.name AS subjectName
          FROM test t
@@ -179,7 +182,7 @@ const getTestResults = async (testId) => {
  * Cập nhật thông tin đề thi theo ID.
  */
 const updateTest = async (testData) => {
-    const { id, name, classId, turn, startAt, endAt, duration, numQuestion } = testData;
+    const { id, name, classId, turn, startAt, endAt, duration, numQuestion, type } = testData;
 
     // Validate lớp học nếu classId được thay đổi
     if (classId) {
@@ -188,16 +191,16 @@ const updateTest = async (testData) => {
 
     const [result] = await db.execute(
         `UPDATE test
-         SET name = ?, class_id = ?, turn = ?, startAt = ?, endAt = ?, duration = ?, num_question = ?
+         SET name = ?, class_id = ?, turn = ?, startAt = ?, endAt = ?, duration = ?, num_question = ?, type = ?
          WHERE id = ?`,
-        [name, classId, turn, toMySQLDatetime(startAt), toMySQLDatetime(endAt), duration, numQuestion, id]
+        [name, classId, turn, toMySQLDatetime(startAt), toMySQLDatetime(endAt), duration, numQuestion, type || 'regular', id]
     );
 
     if (result.affectedRows === 0) {
         throw new Error('Test not found');
     }
 
-    return { id, name, classId, turn, startAt, endAt, duration, numQuestion };
+    return { id, name, classId, turn, startAt, endAt, duration, numQuestion, type };
 };
 
 // ─── DELETE ───────────────────────────────────────────────────────────────────

@@ -2,9 +2,9 @@ const db = require('../config/MySQLConnect');
 
 // create new subject
 const createSubject = async(name, lessons) => {
-    const [result] = await db.execute('INSERT INTO subject(name, lessons) VALUES (?, ?, ?)', [name, lessons, 1]);
+    const [result] = await db.execute('INSERT INTO subject(name, lessons, status) VALUES (?, ?, ?)', [name, lessons, 1]);
 
-    return {id: result.insertId, name, lessons};
+    return {id: result.insertId, name, lessons, status: 1};
 }
 
 // get subject by id
@@ -69,4 +69,13 @@ const getAllSubjectByStatus = async (status) => {
     return result;
 }
 
-module.exports = {createSubject, getSubject, updateSubject, deleteSubject, getAllSubject, getAllSubjectByStatus};
+// toggle subject status (1 → 0, 0 → 1)
+const toggleSubjectStatus = async (id) => {
+    const [rows] = await db.execute('SELECT status FROM subject WHERE id = ?', [id]);
+    if (rows.length === 0) throw new Error('Subject not found');
+    const newStatus = rows[0].status === 1 ? 0 : 1;
+    await db.execute('UPDATE subject SET status = ? WHERE id = ?', [newStatus, id]);
+    return { id: Number(id), status: newStatus };
+};
+
+module.exports = {createSubject, getSubject, updateSubject, deleteSubject, getAllSubject, getAllSubjectByStatus, toggleSubjectStatus};

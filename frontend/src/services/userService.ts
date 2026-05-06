@@ -43,10 +43,15 @@ export const userService = {
   },
 
   // TODO: implement bulk create from CSV
-  // bulkCreate: async (users: CreateUserPayload[]): Promise<BulkCreateResult[]> => {
-  //   const res = await api.post<ApiResponse<BulkCreateResult[]>>("/users/bulk", { users });
-  //   return res.data.data;
-  // },
+  bulkCreate: async (users: CreateUserPayload[]): Promise<{ success: { email: string; data: User }[]; failed: { email: string; error: string }[] }> => {
+    const res = await api.post<ApiResponse<{ success: { email: string; data: User }[]; failed: { email: string; error: string }[] }>>('/users/bulk', { users });
+    return res.data.data;
+  },
+
+  toggleStatus: async (id: number): Promise<{ id: number; status: number }> => {
+    const res = await api.patch<ApiResponse<{ id: number; status: number }>>(`/users/${id}/status`);
+    return res.data.data;
+  },
 
   update: async (id: number, payload: UpdateUserPayload): Promise<User> => {
     const res = await api.put<ApiResponse<User>>(`/users/${id}`, payload);

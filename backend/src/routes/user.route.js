@@ -21,6 +21,7 @@ router.put('/password', verifyToken, userController.changePassword);
 
 router.get('/', userController.getAllUser);
 router.delete('/:id', userController.deleteUser);
+router.patch('/:id/status', userController.toggleUserStatus);  // must be before PUT /:id
 router.put('/:id', userController.updateUser);
 router.get('/:id', userController.getUserById);
 

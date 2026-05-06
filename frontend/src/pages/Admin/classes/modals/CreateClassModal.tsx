@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Dialog } from "radix-ui";
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Search, UserCheck, UserX } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -38,7 +38,7 @@ export function CreateClassModal({ open, onClose, onCreated }: CreateClassModalP
     reset,
     formState: { errors, isSubmitting },
   } = useForm<CreateClassFormValues>({
-    resolver: zodResolver(createClassSchema),
+    resolver: zodResolver(createClassSchema) as Resolver<CreateClassFormValues>,
     defaultValues: { name: "", subjectId: 0, teacherId: 0, quantity: 30, status: "active" },
   });
 
@@ -52,7 +52,7 @@ export function CreateClassModal({ open, onClose, onCreated }: CreateClassModalP
     (async () => {
       try {
         const users = await userService.getAll();
-        setTeachers(users.filter((u) => u.role === "teacher"));
+        setTeachers(users.filter((u) => u.role === "teacher" && u.status !== 0));
         setStudents(users.filter((u) => u.role === "student"));
         const subs = await subjectService.getAll();
         setSubjects(subs);
@@ -75,7 +75,9 @@ export function CreateClassModal({ open, onClose, onCreated }: CreateClassModalP
       onCreated(cls);
       toast.success("Tạo lớp học thành công");
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Tạo lớp học thất bại";
+      const msg =
+        (e as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        (e instanceof Error ? e.message : "Tạo lớp học thất bại");
       toast.error(msg);
     }
   };

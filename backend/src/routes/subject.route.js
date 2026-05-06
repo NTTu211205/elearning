@@ -4,6 +4,7 @@ var express = require('express');
 var router = express.Router();
 
 router.post('/', subjectController.addSubject);
+router.patch('/:id/toggle-status', subjectController.toggleSubjectStatus);  // before /:id
 router.get('/:id', subjectController.getSubjectById);
 router.put('/:id', subjectController.updateSubjectInfo);
 router.delete('/:id', subjectController.deleteSubject);

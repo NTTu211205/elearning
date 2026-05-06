@@ -37,4 +37,9 @@ export const subjectService = {
   delete: async (id: number): Promise<void> => {
     await api.delete(`/subject/${id}`);
   },
+
+  toggleStatus: async (id: number): Promise<{ id: number; status: number }> => {
+    const res = await api.patch<ApiResponse<{ id: number; status: number }>>(`/subject/${id}/toggle-status`);
+    return res.data.data;
+  },
 };

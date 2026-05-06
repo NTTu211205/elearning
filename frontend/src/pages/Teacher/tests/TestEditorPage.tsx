@@ -539,6 +539,7 @@ const TestEditorPage = () => {
           duration: testData.duration,
           startAt: testData.startAt,
           endAt: testData.endAt,
+          type: testData.type ?? "regular",
         });
         if (questionsData.length > 0) {
           setQuestions(questionsData);
@@ -643,6 +644,7 @@ const handleImport = async (file: File) => {
           startAt: settings.startAt,
           endAt: settings.endAt,
           numQuestion: questions.length,
+          type: settings.type,
         });
         await testService.saveQuestions(editTestId, questions);
         toast.success("Cập nhật đề thi thành công");
@@ -656,6 +658,7 @@ const handleImport = async (file: File) => {
           startAt: settings.startAt,
           endAt: settings.endAt,
           numQuestion: questions.length,
+          type: settings.type,
         });
         await testService.saveQuestions(created.id, questions);
         toast.success("Tạo đề thi thành công");

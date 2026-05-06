@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, Search, Eye, Pencil, Trash2 } from "lucide-react";
+import { Plus, Search, Eye, Pencil, Trash2, Power } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useSubjectStore } from "@/stores/useSubjectStore";
@@ -12,7 +12,7 @@ import { SubjectDetailModal } from "./modals/SubjectDetailModal";
 import { DeleteConfirmModal } from "./modals/DeleteConfirmModal";
 
 const SubjectListPage = () => {
-  const { subjects, loading, filters, fetchSubjects, setFilters, getFilteredSubjects } =
+  const { subjects, loading, filters, fetchSubjects, setFilters, getFilteredSubjects, toggleSubjectStatus } =
     useSubjectStore();
 
   const [createOpen, setCreateOpen] = useState(false);
@@ -123,6 +123,19 @@ const SubjectListPage = () => {
                           aria-label="Xem chi tiết"
                         >
                           <Eye className="size-4" />
+                        </button>
+                        <button
+                          onClick={() => toggleSubjectStatus(subject.id)}
+                          className={cn(
+                            "rounded-md p-1.5 transition-colors",
+                            subject.status === 1
+                              ? "text-green-600 hover:bg-green-50"
+                              : "text-red-500 hover:bg-red-50"
+                          )}
+                          aria-label={subject.status === 1 ? "Vô hiệu hóa" : "Kích hoạt"}
+                          title={subject.status === 1 ? "Vô hiệu hóa" : "Kích hoạt"}
+                        >
+                          <Power className="size-4" />
                         </button>
                         <button
                           onClick={() => setEditSubject(subject)}

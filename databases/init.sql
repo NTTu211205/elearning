@@ -50,7 +50,8 @@ CREATE TABLE `test` (
   `startAt` datetime DEFAULT NULL,
   `endAt` datetime DEFAULT NULL,
   `duration` int NOT NULL,
-  `num_question` int NOT NULL
+  `num_question` int NOT NULL,
+  `type` ENUM('regular','midterm','final') NOT NULL DEFAULT 'regular'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `user` (
@@ -219,23 +220,26 @@ INSERT INTO `enrollment` (student_id, class_id, averageScore) VALUES
 --    class_id  → class(id)
 --    createBy  → user(id) [role = teacher]
 -- ============================================================
-INSERT INTO `test` (id, name, class_id, createBy, turn, startAt, endAt, duration, num_question) VALUES
+INSERT INTO `test` (id, name, class_id, createBy, turn, startAt, endAt, duration, num_question, type) VALUES
 -- Lớp CSDT-K20A
-(1,  'Kiểm tra giữa kỳ - CSDT K20A',   1, 1, 1, '2025-03-15 07:30:00', '2025-03-15 09:30:00', 90, 40),
-(2,  'Kiểm tra cuối kỳ - CSDT K20A',   1, 1, 1, '2025-05-10 07:30:00', '2025-05-10 10:00:00', 120, 60),
+(1,  'Kiểm tra giữa kỳ - CSDT K20A',   1, 1, 1, '2025-03-15 07:30:00', '2025-03-15 09:30:00', 90,  40,  'midterm'),
+(2,  'Kiểm tra cuối kỳ - CSDT K20A',   1, 1, 1, '2025-05-10 07:30:00', '2025-05-10 10:00:00', 120, 60,  'final'),
 -- Lớp CSDT-K20B
-(3,  'Kiểm tra giữa kỳ - CSDT K20B',   2, 1, 1, '2025-03-16 13:00:00', '2025-03-16 15:00:00', 90, 40),
-(4,  'Kiểm tra cuối kỳ - CSDT K20B',   2, 1, 1, '2025-05-11 13:00:00', '2025-05-11 15:30:00', 120, 60),
+(3,  'Kiểm tra giữa kỳ - CSDT K20B',   2, 1, 1, '2025-03-16 13:00:00', '2025-03-16 15:00:00', 90,  40,  'midterm'),
+(4,  'Kiểm tra cuối kỳ - CSDT K20B',   2, 1, 1, '2025-05-11 13:00:00', '2025-05-11 15:30:00', 120, 60,  'final'),
 -- Lớp OOP-K21A
-(5,  'Kiểm tra chương 1 - OOP K21A',   3, 2, 1, '2025-03-20 08:00:00', '2025-03-20 09:30:00', 60, 30),
-(6,  'Kiểm tra giữa kỳ - OOP K21A',    3, 2, 1, '2025-04-10 08:00:00', '2025-04-10 10:00:00', 90, 45),
+(5,  'Kiểm tra chương 1 - OOP K21A',   3, 2, 1, '2025-03-20 08:00:00', '2025-03-20 09:30:00', 60,  30,  'regular'),
+(6,  'Kiểm tra giữa kỳ - OOP K21A',    3, 2, 1, '2025-04-10 08:00:00', '2025-04-10 10:00:00', 90,  45,  'midterm'),
 -- Lớp OOP-K21B (ended)
-(7,  'Kiểm tra giữa kỳ - OOP K21B',    4, 2, 1, '2025-03-21 14:00:00', '2025-03-21 15:30:00', 90, 40),
-(8,  'Kiểm tra cuối kỳ - OOP K21B',    4, 2, 1, '2025-04-25 14:00:00', '2025-04-25 16:30:00', 120, 60),
+(7,  'Kiểm tra giữa kỳ - OOP K21B',    4, 2, 1, '2025-03-21 14:00:00', '2025-03-21 15:30:00', 90,  40,  'midterm'),
+(8,  'Kiểm tra cuối kỳ - OOP K21B',    4, 2, 1, '2025-04-25 14:00:00', '2025-04-25 16:30:00', 120, 60,  'final'),
 -- Lớp MMT-K20A
-(9,  'Kiểm tra lý thuyết - MMT K20A',  5, 3, 1, '2025-04-05 09:00:00', '2025-04-05 10:30:00', 60, 30),
+(9,  'Kiểm tra lý thuyết - MMT K20A',  5, 3, 1, '2025-04-05 09:00:00', '2025-04-05 10:30:00', 60,  30,  'regular'),
 -- Lớp AI-K22A
-(10, 'Kiểm tra nhập môn - AI K22A',    6, 1, 1, '2025-05-20 07:30:00', '2025-05-20 09:00:00', 75, 35);
+(10, 'Kiểm tra nhập môn - AI K22A',    6, 1, 1, '2025-05-20 07:30:00', '2025-05-20 09:00:00', 75,  35,  'regular'),
+-- Kiểm tra quá trình bổ sung cho lớp CSDT
+(11, 'KT chương 1 - CSDT K20A',        1, 1, 1, '2025-03-01 08:00:00', '2025-03-01 09:30:00', 60,  25,  'regular'),
+(12, 'KT chương 1 - CSDT K20B',        2, 1, 1, '2025-03-02 13:00:00', '2025-03-02 14:30:00', 60,  25,  'regular');
 
 
 -- ============================================================
@@ -290,7 +294,17 @@ INSERT INTO `doexam` (id, student_id, test_id, attendAt, submitAt, score, turn, 
 -- Test 10: Nhập môn AI K22A (chưa thi)
 (34, 4, 10, NULL, NULL, NULL, 1, 'PENDING'),
 (35, 5, 10, NULL, NULL, NULL, 1, 'PENDING'),
-(36, 6, 10, NULL, NULL, NULL, 1, 'PENDING');
+(36, 6, 10, NULL, NULL, NULL, 1, 'PENDING'),
+-- Test 11: KT chương 1 CSDT K20A (regular)
+(37, 4,  11, '2025-03-01 08:02:00', '2025-03-01 08:58:00', 8.0, 1, 'DONE'),
+(38, 5,  11, '2025-03-01 08:05:00', '2025-03-01 09:05:00', 6.5, 1, 'DONE'),
+(39, 6,  11, '2025-03-01 08:00:00', '2025-03-01 09:00:00', 9.0, 1, 'DONE'),
+(40, 7,  11, '2025-03-01 08:03:00', '2025-03-01 09:03:00', 7.0, 1, 'DONE'),
+(41, 8,  11, '2025-03-01 08:01:00', '2025-03-01 09:01:00', 8.0, 1, 'DONE'),
+-- Test 12: KT chương 1 CSDT K20B (regular)
+(42, 9,  12, '2025-03-02 13:02:00', '2025-03-02 14:00:00', 7.5, 1, 'DONE'),
+(43, 10, 12, '2025-03-02 13:00:00', '2025-03-02 13:58:00', 7.0, 1, 'DONE'),
+(44, 11, 12, '2025-03-02 13:01:00', '2025-03-02 14:01:00', 6.0, 1, 'DONE');
 
 
 -- ============================================================

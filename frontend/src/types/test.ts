@@ -1,4 +1,5 @@
 type QuestionType = "multiple_choice";
+type TestType = "regular" | "midterm" | "final";
 
 interface QuestionOption {
   label: string; // "A", "B", "C", "D"
@@ -20,6 +21,7 @@ interface TestSettings {
   duration: number; // minutes
   startAt: string; // ISO string or ""
   endAt: string;
+  type: TestType;
 }
 
 interface Test extends TestSettings {
@@ -37,6 +39,7 @@ interface TestListItem {
   endAt: string | null;
   questionCount?: number;
   duration?: number;
+  type?: TestType;
 }
 
-export type { Question, QuestionOption, QuestionType, Test, TestSettings, TestListItem };
+export type { Question, QuestionOption, QuestionType, Test, TestSettings, TestListItem, TestType };

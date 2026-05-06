@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Dialog } from "radix-ui";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Search, Eye, Pencil, Trash2, X, Upload } from "lucide-react";
+import { Plus, Search, Eye, Pencil, Trash2, X, Upload, Power } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useUserStore } from "@/stores/useUserStore";
@@ -35,6 +35,15 @@ const ROLE_COLORS: Record<Role, string> = {
   teacher: "bg-purple-100 text-purple-700",
   admin: "bg-orange-100 text-orange-700",
 };
+
+const USER_STATUS_LABELS: Record<number, string> = { 1: "Hoạt động", 0: "Vô hiệu" };
+const USER_STATUS_COLORS: Record<number, string> = {
+  1: "bg-green-100 text-green-700",
+  0: "bg-red-100 text-red-600",
+};
+
+// CSV default password if missing
+const CSV_DEFAULT_PASS = "123456";
 
 // ─── Zod Schema ───────────────────────────────────────────────────────────────
 
@@ -391,15 +400,180 @@ function DeleteConfirmModal({ open, onClose, user }: DeleteConfirmModalProps) {
   );
 }
 
+// ─── CSV Import Modal ─────────────────────────────────────────────────────────
+
+interface CsvRow {
+  name: string; email: string; role: string; password: string; phone?: string; dob?: string;
+}
+
+function parseCsv(text: string): CsvRow[] {
+  const lines = text.trim().split(/\r?\n/);
+  if (lines.length < 2) return [];
+  const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
+  return lines.slice(1).map((line) => {
+    const vals = line.split(",").map((v) => v.trim());
+    const row: Record<string, string> = {};
+    headers.forEach((h, i) => { row[h] = vals[i] ?? ""; });
+    return {
+      name: row.name ?? "",
+      email: row.email ?? "",
+      role: row.role ?? "student",
+      password: row.password || CSV_DEFAULT_PASS,
+      phone: row.phone || undefined,
+      dob: row.dob || undefined,
+    } as CsvRow;
+  }).filter((r) => r.name && r.email);
+}
+
+interface CsvImportModalProps { open: boolean; onClose: () => void; }
+
+function CsvImportModal({ open, onClose }: CsvImportModalProps) {
+  const { bulkCreateUsers } = useUserStore();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [rows, setRows] = useState<CsvRow[]>([]);
+  const [importing, setImporting] = useState(false);
+  const [result, setResult] = useState<{ successCount: number; failCount: number } | null>(null);
+  const [dragging, setDragging] = useState(false);
+
+  useEffect(() => { if (open) { setRows([]); setResult(null); setDragging(false); } }, [open]);
+
+  const processText = (text: string) => {
+    setRows(parseCsv(text));
+    setResult(null);
+  };
+
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => processText(ev.target?.result as string);
+    reader.readAsText(file, "utf-8");
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (!file || !file.name.endsWith(".csv")) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => processText(ev.target?.result as string);
+    reader.readAsText(file, "utf-8");
+  };
+
+  const handleImport = async () => {
+    if (rows.length === 0) return;
+    setImporting(true);
+    const r = await bulkCreateUsers(rows as CreateUserPayload[]);
+    setResult(r);
+    setImporting(false);
+  };
+
+  return (
+    <Dialog.Root open={open} onOpenChange={(v) => !v && onClose()}>
+      <ModalContent title="Import người dùng từ CSV"
+        description="Cột bắt buộc: name, email, role, password. Tuỳ chọn: phone, dob."
+        onClose={onClose}>
+        <div className="flex flex-col gap-4">
+          {/* Drop zone */}
+          {!rows.length && !result && (
+            <div
+              onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={handleDrop}
+              onClick={() => fileRef.current?.click()}
+              className={cn(
+                "flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-10 cursor-pointer transition-colors",
+                dragging ? "border-primary bg-primary/5" : "border-border hover:border-primary/50 hover:bg-muted/30"
+              )}
+            >
+              <Upload className="size-8 text-muted-foreground" />
+              <p className="text-sm font-medium text-foreground">Kéo thả file CSV vào đây</p>
+              <p className="text-xs text-muted-foreground">hoặc nhấp để chọn file</p>
+              <input
+                ref={fileRef} type="file" accept=".csv" onChange={handleFile}
+                className="hidden"
+              />
+            </div>
+          )}
+
+          {/* Change file button when rows loaded */}
+          {rows.length > 0 && !result && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => { setRows([]); if (fileRef.current) fileRef.current.value = ""; }}
+                className="text-xs text-muted-foreground underline hover:text-foreground"
+              >
+                Chọn file khác
+              </button>
+              <input ref={fileRef} type="file" accept=".csv" onChange={handleFile} className="hidden" />
+            </div>
+          )}
+
+          {rows.length > 0 && !result && (
+            <div className="rounded-lg border border-border overflow-hidden max-h-52 overflow-y-auto">
+              <table className="w-full text-xs">
+                <thead className="bg-muted/50 sticky top-0">
+                  <tr>
+                    {["Họ tên", "Email", "Vai trò", "SĐT"].map((h) => (
+                      <th key={h} className="px-3 py-2 text-left font-semibold text-muted-foreground">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {rows.map((r, i) => (
+                    <tr key={i} className="hover:bg-muted/30">
+                      <td className="px-3 py-1.5">{r.name}</td>
+                      <td className="px-3 py-1.5 text-muted-foreground">{r.email}</td>
+                      <td className="px-3 py-1.5">
+                        <span className={cn("rounded-full px-1.5 text-xs font-medium", ROLE_COLORS[(r.role as Role) ?? "student"])}>
+                          {ROLE_LABELS[(r.role as Role) ?? "student"] ?? r.role}
+                        </span>
+                      </td>
+                      <td className="px-3 py-1.5 text-muted-foreground">{r.phone ?? "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {rows.length > 0 && !result && (
+            <p className="text-sm text-muted-foreground">Tìm thấy <strong>{rows.length}</strong> dòng dữ liệu</p>
+          )}
+
+          {result && (
+            <div className="rounded-lg border border-border p-4 flex flex-col gap-1 text-sm">
+              <p className="text-green-600 font-medium">✓ Tạo thành công: {result.successCount} tài khoản</p>
+              {result.failCount > 0 && (
+                <p className="text-red-600">✗ Thất bại: {result.failCount} tài khoản (email đã tồn tại hoặc dữ liệu lỗi)</p>
+              )}
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2 pt-1">
+            <Button variant="outline" onClick={onClose}>Đóng</Button>
+            {!result && (
+              <Button onClick={handleImport} disabled={rows.length === 0 || importing}>
+                {importing ? "Đang import..." : `Import ${rows.length > 0 ? `(${rows.length})` : ""}`}
+              </Button>
+            )}
+          </div>
+        </div>
+      </ModalContent>
+    </Dialog.Root>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 const UserListPage = () => {
-  const { users, loading, filters, fetchUsers, setFilters, getFilteredUsers } = useUserStore();
+  const { users, loading, filters, fetchUsers, setFilters, getFilteredUsers, toggleUserStatus } = useUserStore();
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editUser, setEditUser] = useState<User | null>(null);
   const [detailUser, setDetailUser] = useState<User | null>(null);
   const [deleteUser, setDeleteUser] = useState<User | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -418,8 +592,7 @@ const UserListPage = () => {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {/* TODO: implement CSV import — parse file, call POST /users/bulk to create nhiều user cùng lúc */}
-          <Button size="sm" variant="outline" disabled title="Chức năng import CSV đang phát triển">
+          <Button size="sm" variant="outline" onClick={() => setImportOpen(true)}>
             <Upload className="size-4" />
             Import CSV
           </Button>
@@ -451,6 +624,15 @@ const UserListPage = () => {
           <option value="teacher">Giáo viên</option>
           <option value="admin">Admin</option>
         </select>
+        <select
+          className={cn(selectClass, "w-full sm:w-44")}
+          value={filters.status}
+          onChange={(e) => setFilters({ status: e.target.value as typeof filters.status })}
+        >
+          <option value="all">Tất cả trạng thái</option>
+          <option value="active">Hoạt động</option>
+          <option value="inactive">Vô hiệu</option>
+        </select>
       </div>
 
       {/* Table */}
@@ -459,7 +641,7 @@ const UserListPage = () => {
           <table className="w-full text-sm">
             <thead className="bg-muted/50">
               <tr>
-                {["Họ tên", "Email", "Vai trò", "Thao tác"].map((col) => (
+                {["Họ tên", "Email", "Vai trò", "Trạng thái", "Thao tác"].map((col) => (
                   <th
                     key={col}
                     className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap"
@@ -472,21 +654,21 @@ const UserListPage = () => {
             <tbody className="divide-y divide-border bg-card">
               {loading && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-10 text-center text-muted-foreground">
+                  <td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">
                     Đang tải...
                   </td>
                 </tr>
               )}
               {!loading && filteredUsers.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-10 text-center text-muted-foreground">
+                  <td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">
                     Không tìm thấy người dùng nào
                   </td>
                 </tr>
               )}
               {!loading &&
                 filteredUsers.map((user) => (
-                  <tr key={user.id} className="hover:bg-muted/30 transition-colors">
+                  <tr key={user.id} className={cn("hover:bg-muted/30 transition-colors", user.status === 0 && "opacity-60")}>
                     <td className="px-4 py-3 font-medium text-foreground whitespace-nowrap">
                       {user.name}
                     </td>
@@ -494,6 +676,14 @@ const UserListPage = () => {
                     <td className="px-4 py-3">
                       <span className={cn("inline-flex rounded-full px-2 py-0.5 text-xs font-medium", ROLE_COLORS[user.role])}>
                         {ROLE_LABELS[user.role]}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={cn(
+                        "inline-flex rounded-full px-2 py-0.5 text-xs font-medium",
+                        USER_STATUS_COLORS[user.status ?? 1]
+                      )}>
+                        {USER_STATUS_LABELS[user.status ?? 1]}
                       </span>
                     </td>
                     <td className="px-4 py-3">
@@ -507,14 +697,29 @@ const UserListPage = () => {
                         </button>
                         <button
                           onClick={() => setEditUser(user)}
-                          className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                          disabled={user.status === 0}
+                          className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                           aria-label="Chỉnh sửa"
                         >
                           <Pencil className="size-4" />
                         </button>
                         <button
+                          onClick={() => toggleUserStatus(user.id)}
+                          className={cn(
+                            "rounded-md p-1.5 transition-colors",
+                            user.status === 1
+                              ? "text-green-600 hover:bg-green-50"
+                              : "text-red-500 hover:bg-red-50"
+                          )}
+                          aria-label={user.status === 1 ? "Vô hiệu hóa" : "Kích hoạt"}
+                          title={user.status === 1 ? "Vô hiệu hóa" : "Kích hoạt"}
+                        >
+                          <Power className="size-4" />
+                        </button>
+                        <button
                           onClick={() => setDeleteUser(user)}
-                          className="rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                          disabled={user.status === 0}
+                          className="rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                           aria-label="Xóa"
                         >
                           <Trash2 className="size-4" />
@@ -533,6 +738,7 @@ const UserListPage = () => {
       <EditUserModal open={!!editUser} onClose={() => setEditUser(null)} user={editUser} />
       <UserDetailModal open={!!detailUser} onClose={() => setDetailUser(null)} user={detailUser} />
       <DeleteConfirmModal open={!!deleteUser} onClose={() => setDeleteUser(null)} user={deleteUser} />
+      <CsvImportModal open={importOpen} onClose={() => setImportOpen(false)} />
     </div>
   );
 };

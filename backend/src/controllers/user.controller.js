@@ -151,4 +151,15 @@ const changePassword = async (req, res) => {
     }
 };
 
-module.exports = {addUser, getAllUser, deleteUser, updateUser, getUserById, getUserProfile, bulkAddUsers, updateProfile, changePassword};
+// toggle user status
+const toggleUserStatus = async (req, res) => {
+    try {
+        const {id} = req.params;
+        const result = await userService.toggleUserStatus(id);
+        res.status(200).json({ message: 'Success', data: result });
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+
+module.exports = {addUser, getAllUser, deleteUser, updateUser, getUserById, getUserProfile, bulkAddUsers, updateProfile, changePassword, toggleUserStatus};

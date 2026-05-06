@@ -6,12 +6,13 @@ import { z } from "zod";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { TestSettings } from "@/types/test";
+import type { TestSettings, TestType } from "@/types/test";
 
 const settingsSchema = z
   .object({
     name: z.string().min(1, "Vui lòng nhập tên đề thi"),
     class_id: z.number().int().positive("Vui lòng chọn lớp học"),
+    type: z.enum(["regular", "midterm", "final"]),
     turn: z.number().int().min(1, "Tối thiểu 1 lượt"),
     duration: z.number().int().min(1, "Tối thiểu 1 phút"),
     startAt: z.string().min(1, "Vui lòng chọn thời gian mở"),
@@ -23,6 +24,12 @@ const settingsSchema = z
   });
 
 type SettingsFormValues = z.infer<typeof settingsSchema>;
+
+const TEST_TYPE_LABELS: Record<TestType, string> = {
+  regular: "Quá trình (30%)",
+  midterm: "Giữa kỳ (20%)",
+  final: "Cuối kỳ (50%)",
+};
 
 export interface ClassOption {
   id: number;
@@ -64,6 +71,7 @@ export const TestSettingsModal = ({
       reset({
         name: initialSettings.name,
         class_id: initialSettings.class_id ?? undefined,
+        type: initialSettings.type ?? "regular",
         turn: initialSettings.turn,
         duration: initialSettings.duration,
         startAt: initialSettings.startAt,
@@ -73,6 +81,7 @@ export const TestSettingsModal = ({
       reset({
         name: initialName,
         class_id: undefined,
+        type: "regular",
         turn: 1,
         duration: 15,
         startAt: "",
@@ -89,6 +98,7 @@ export const TestSettingsModal = ({
       await onSave({
         name: data.name,
         class_id: data.class_id,
+        type: data.type,
         turn: data.turn,
         duration: data.duration,
         startAt: toUTC(data.startAt),
@@ -144,6 +154,18 @@ export const TestSettingsModal = ({
                 ))}
               </select>
               {errors.class_id && <p className="text-destructive text-xs">{errors.class_id.message}</p>}
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-foreground">
+                Loại kiểm tra <span className="text-destructive">*</span>
+              </label>
+              <select className={fieldClass} {...register("type")}>
+                {(Object.entries(TEST_TYPE_LABELS) as [TestType, string][]).map(([val, label]) => (
+                  <option key={val} value={val}>{label}</option>
+                ))}
+              </select>
+              {errors.type && <p className="text-destructive text-xs">{errors.type.message}</p>}
             </div>
 
             <div className="grid grid-cols-2 gap-3">

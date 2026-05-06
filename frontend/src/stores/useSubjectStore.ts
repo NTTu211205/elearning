@@ -20,6 +20,7 @@ interface SubjectState {
   createSubject: (data: CreateSubjectPayload) => Promise<void>;
   updateSubject: (id: number, data: UpdateSubjectPayload) => Promise<void>;
   deleteSubject: (id: number) => Promise<void>;
+  toggleSubjectStatus: (id: number) => Promise<void>;
   setFilters: (filters: Partial<SubjectFilters>) => void;
   getFilteredSubjects: () => Subject[];
 }
@@ -79,12 +80,27 @@ export const useSubjectStore = create<SubjectState>((set, get) => ({
       set((state) => ({
         subjects: state.subjects.map((s) => (s.id === id ? { ...s, status: 0 } : s)),
       }));
-      toast.success("Xóa môn học thành công");
+      toast.success("Đã vô hiệu hóa môn học");
     } catch (error) {
       console.error(error);
       toast.error("Xóa môn học thất bại");
     } finally {
       set({ loading: false });
+    }
+  },
+
+  toggleSubjectStatus: async (id) => {
+    try {
+      const updated = await subjectService.toggleStatus(id);
+      set((state) => ({
+        subjects: state.subjects.map((s) =>
+          s.id === id ? { ...s, status: updated.status } : s
+        ),
+      }));
+      toast.success(updated.status === 1 ? "Kích hoạt môn học thành công" : "Vô hiệu hóa môn học thành công");
+    } catch (error) {
+      console.error(error);
+      toast.error("Cập nhật trạng thái thất bại");
     }
   },
 
