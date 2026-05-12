@@ -163,7 +163,7 @@ const ForgetPasswordPage = () => {
           {/* ── Header bar ─────────────────────────────────────────────────── */}
           <div className="bg-primary px-6 py-4">
             <p className="text-sm font-semibold text-primary-foreground">E-Learning</p>
-            <h1 className="text-lg font-bold text-white mt-0.5">Quên mật khẩu</h1>
+            <h2 className="text-lg font-bold mt-0.5">Quên mật khẩu</h2>
           </div>
 
           <div className="p-6">

@@ -87,8 +87,8 @@ const StudentSidebar = ({ open, onClose, collapsed, onToggleCollapse }: StudentS
               className={({ isActive }) =>
                 cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                  "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent",
-                  isActive && "bg-sidebar-accent text-sidebar-foreground",
+                  "text-sidebar-foreground/70 hover:bg-[var(--sidebar-item-hover)] hover:text-[var(--sidebar-item-hover-foreground)]",
+                  isActive && "bg-[var(--sidebar-item-active)] text-[var(--sidebar-item-active-foreground)]",
                   collapsed && "justify-center px-2"
                 )
               }

@@ -55,12 +55,12 @@ export default function ChangePasswordPage() {
   return (
     <div className="max-w-md mx-auto py-10 px-4">
       <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
-        <div className="flex items-center gap-3 mb-6">
+        <div className="d-flex items-center justify-content-center mb-6">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
             <KeyRound className="size-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-base font-semibold text-foreground">Đổi mật khẩu</h1>
+            <h2 className="text-base  font-semibold text-foreground">Đổi mật khẩu</h2>
             <p className="text-xs text-muted-foreground">Cập nhật mật khẩu đăng nhập của bạn</p>
           </div>
         </div>

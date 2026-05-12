@@ -83,7 +83,6 @@ export default function ProfilePage() {
         <div className="mb-4 space-y-1">
           <Label className="text-xs text-muted-foreground">Email</Label>
           <p className="text-sm text-foreground font-medium">{data?.email}</p>
-          <p className="text-xs text-muted-foreground">Email không thể thay đổi.</p>
         </div>
 
         {/* Editable form */}

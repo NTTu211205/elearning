@@ -25,7 +25,7 @@ const createUser = async (userData) => {
 
 //get all user include: active and non-active
 const getAllUser = async() => {
-    const [result] = await db.execute('SELECT id, name, dob, role, email, phone, status FROM user');
+    const [result] = await db.execute('SELECT id, name, dob, role, email, phone, status FROM user where role != "admin"');
     return result;
 }
 

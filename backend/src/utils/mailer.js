@@ -30,7 +30,7 @@ const sendOTPEmail = async (to, otp) => {
             <div style="border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px; padding: 24px;">
                 <p style="margin-top: 0; color: #374151; font-size: 15px;">Bạn đã yêu cầu đặt lại mật khẩu. Sử dụng mã OTP bên dưới:</p>
                 <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 16px; text-align: center; margin: 20px 0;">
-                    <span style="font-size: 40px; font-weight: 700; letter-spacing: 12px; color: #1d4ed8; font-family: monospace;">
+                    <span style=" white-space: nowrap; font-size: 32px; font-weight: 700; letter-spacing: 12px; color: #1d4ed8; font-family: monospace;">
                         ${otp}
                     </span>
                 </div>

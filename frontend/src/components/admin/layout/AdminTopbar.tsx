@@ -8,11 +8,11 @@ interface AdminTopbarProps {
 
 const AdminTopbar = ({ onMenuClick }: AdminTopbarProps) => {
   return (
-    <header className="flex h-16 shrink-0 items-center gap-4 border-b border-sidebar-border bg-sidebar px-4">
+    <header className="flex h-16 shrink-0 items-center gap-4 border-b border-[var(--topbar-border)] bg-[var(--topbar)] px-4 text-[var(--topbar-foreground)]">
       <Button
         variant="ghost"
         size="icon"
-        className="lg:hidden text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+        className="lg:hidden text-[var(--topbar-foreground)] opacity-80 hover:bg-[var(--topbar-accent)] hover:opacity-100"
         onClick={onMenuClick}
         aria-label="Mở menu"
       >

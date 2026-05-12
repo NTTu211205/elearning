@@ -18,19 +18,50 @@ const enrollStudent = async (studentId, classId) => {
     // Validate class qua classService — throw nếu không tồn tại
     await classService.getClassById(classId);
 
-    // Check duplicate trên bảng enrollment
-    const [existing] = await db.execute(
-        'SELECT student_id FROM enrollment WHERE student_id = ? AND class_id = ?',
-        [studentId, classId]
-    );
-    if (existing.length > 0) {
-        throw new Error(`Student ${studentId} is already enrolled in this class`);
-    }
+    const connection = await db.getConnection();
+    try {
+        await connection.beginTransaction();
 
-    await db.execute(
-        'INSERT INTO enrollment (student_id, class_id) VALUES (?, ?)',
-        [studentId, classId]
-    );
+        // Lock class row để tránh race-condition khi nhiều request ghi danh cùng lúc.
+        const [classRows] = await connection.execute(
+            'SELECT id, quantity FROM class WHERE id = ? FOR UPDATE',
+            [classId]
+        );
+        if (classRows.length === 0) {
+            throw new Error('Class not found');
+        }
+
+        // Check duplicate trên bảng enrollment
+        const [existing] = await connection.execute(
+            'SELECT student_id FROM enrollment WHERE student_id = ? AND class_id = ?',
+            [studentId, classId]
+        );
+        if (existing.length > 0) {
+            throw new Error(`Student ${studentId} is already enrolled in this class`);
+        }
+
+        const [countRows] = await connection.execute(
+            'SELECT COUNT(*) AS studentCount FROM enrollment WHERE class_id = ?',
+            [classId]
+        );
+        const currentCount = Number(countRows[0]?.studentCount ?? 0);
+        const quantity = Number(classRows[0]?.quantity ?? 0);
+        if (currentCount >= quantity) {
+            throw new Error('Class is full');
+        }
+
+        await connection.execute(
+            'INSERT INTO enrollment (student_id, class_id) VALUES (?, ?)',
+            [studentId, classId]
+        );
+
+        await connection.commit();
+    } catch (err) {
+        await connection.rollback();
+        throw err;
+    } finally {
+        connection.release();
+    }
 
     return { studentId, classId };
 };
@@ -48,33 +79,68 @@ const enrollStudents = async (studentIds, classId) => {
     const enrolled = [];
     const failed = [];
 
-    for (const studentId of studentIds) {
-        try {
-            // Validate user qua getUserById rồi check role
-            const user = await userService.getUserById(studentId);
-            if (user.role !== 'student') {
-                failed.push({ studentId, reason: `User ${studentId} is not a student` });
-                continue;
-            }
+    const connection = await db.getConnection();
+    try {
+        await connection.beginTransaction();
 
-            // Check duplicate trên bảng enrollment
-            const [existing] = await db.execute(
-                'SELECT student_id FROM enrollment WHERE student_id = ? AND class_id = ?',
-                [studentId, classId]
-            );
-            if (existing.length > 0) {
-                failed.push({ studentId, reason: 'Already enrolled' });
-                continue;
-            }
-
-            await db.execute(
-                'INSERT INTO enrollment (student_id, class_id) VALUES (?, ?)',
-                [studentId, classId]
-            );
-            enrolled.push(studentId);
-        } catch (err) {
-            failed.push({ studentId, reason: err.message });
+        // Lock class row để giữ nhất quán sĩ số trong suốt quá trình bulk insert.
+        const [classRows] = await connection.execute(
+            'SELECT id, quantity FROM class WHERE id = ? FOR UPDATE',
+            [classId]
+        );
+        if (classRows.length === 0) {
+            throw new Error('Class not found');
         }
+
+        const quantity = Number(classRows[0]?.quantity ?? 0);
+        const [countRows] = await connection.execute(
+            'SELECT COUNT(*) AS studentCount FROM enrollment WHERE class_id = ?',
+            [classId]
+        );
+        let remainingSlots = Math.max(quantity - Number(countRows[0]?.studentCount ?? 0), 0);
+
+        for (const studentId of studentIds) {
+            try {
+                // Validate user qua getUserById rồi check role
+                const user = await userService.getUserById(studentId);
+                if (user.role !== 'student') {
+                    failed.push({ studentId, reason: `User ${studentId} is not a student` });
+                    continue;
+                }
+
+                // Check duplicate trên bảng enrollment
+                const [existing] = await connection.execute(
+                    'SELECT student_id FROM enrollment WHERE student_id = ? AND class_id = ?',
+                    [studentId, classId]
+                );
+                if (existing.length > 0) {
+                    failed.push({ studentId, reason: 'Already enrolled' });
+                    continue;
+                }
+
+                if (remainingSlots <= 0) {
+                    failed.push({ studentId, reason: 'Class is full' });
+                    continue;
+                }
+
+                await connection.execute(
+                    'INSERT INTO enrollment (student_id, class_id) VALUES (?, ?)',
+                    [studentId, classId]
+                );
+
+                enrolled.push(studentId);
+                remainingSlots -= 1;
+            } catch (err) {
+                failed.push({ studentId, reason: err.message });
+            }
+        }
+
+        await connection.commit();
+    } catch (err) {
+        await connection.rollback();
+        throw err;
+    } finally {
+        connection.release();
     }
 
     return { enrolled, failed };

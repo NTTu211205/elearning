@@ -37,11 +37,9 @@ services:
       - DB_PORT=3306
       - DB_PASSWORD=123456
       - DB_NAME=ElearningDatabase
-      - REDIS_URL=${REDIS_URL}
+      - REDIS_URL=redis://elearning_redis:6379
       - SMTP_HOST=smtp.gmail.com
       - SMTP_PORT=587
-      - SMTP_USER=${SMTP_USER}
-      - SMTP_PASS=${SMTP_PASS}
     depends_on:
       db:
         condition: service_healthy

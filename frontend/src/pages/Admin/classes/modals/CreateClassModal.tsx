@@ -95,8 +95,11 @@ export function CreateClassModal({ open, onClose, onCreated }: CreateClassModalP
       const result = await classService.enrollStudents(createdClassId, selectedStudentIds);
       const count = result.enrolled.length;
       const failCount = result.failed.length;
+      const fullCount = result.failed.filter((f) => f.reason === "Class is full").length;
+      const otherFailCount = failCount - fullCount;
       if (count > 0) toast.success(`Đã thêm ${count} sinh viên vào lớp`);
-      if (failCount > 0) toast.warning(`${failCount} sinh viên không thể thêm`);
+      if (fullCount > 0) toast.warning(`Lớp đã đủ sĩ số. ${fullCount} sinh viên không thể thêm`);
+      if (otherFailCount > 0) toast.warning(`${otherFailCount} sinh viên không thể thêm`);
       onClose();
     } catch {
       toast.error("Thêm sinh viên thất bại");

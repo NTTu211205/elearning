@@ -86,8 +86,8 @@ const AdminSidebar = ({ open, onClose, collapsed, onToggleCollapse }: AdminSideb
                   "flex items-center rounded-lg py-2.5 text-sm font-medium transition-all",
                   collapsed ? "justify-center px-2" : "gap-3 px-3",
                   isActive
-                    ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
-                    : "text-sidebar-foreground/65 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                    ? "bg-[var(--sidebar-item-active)] text-[var(--sidebar-item-active-foreground)] shadow-sm"
+                    : "text-sidebar-foreground/65 hover:bg-[var(--sidebar-item-hover)] hover:text-[var(--sidebar-item-hover-foreground)]"
                 )
               }
             >
