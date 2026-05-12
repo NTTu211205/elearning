@@ -19,7 +19,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { examService } from "@/services/examService";
+import { examService, type QuestionStat } from "@/services/examService";
 import type { SubmissionDetail, SubmissionAnswerRecord } from "@/types/exam";
 
 // ─────────────────────────────────────────────
@@ -70,7 +70,7 @@ const QuestionNavigator = ({ answers }: { answers: AnswerRecord[] }) => (
 // ─────────────────────────────────────────────
 // Single answer card
 // ─────────────────────────────────────────────
-const AnswerCard = ({ answer }: { answer: AnswerRecord }) => {
+const AnswerCard = ({ answer, failRate }: { answer: AnswerRecord; failRate?: number }) => {
   const isCorrect = answer.chosenIndex === answer.correctIndex;
   const isSkipped = answer.chosenIndex === null;
 
@@ -94,9 +94,23 @@ const AnswerCard = ({ answer }: { answer: AnswerRecord }) => {
         )}>
           {answer.questionIndex}
         </span>
-        <p className="text-sm font-medium text-foreground leading-snug pt-0.5">
-          {answer.questionText}
-        </p>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-foreground leading-snug pt-0.5">
+            {answer.questionText}
+          </p>
+          {failRate !== undefined && (
+            <span className={cn(
+              "inline-flex items-center gap-1 mt-1 text-[10px] font-medium rounded-full px-2 py-0.5",
+              failRate >= 70 ? "bg-red-100 text-red-600" :
+              failRate >= 50 ? "bg-orange-100 text-orange-600" :
+              failRate >= 30 ? "bg-yellow-100 text-yellow-600" :
+              "bg-green-100 text-green-600"
+            )}>
+              <AlertTriangle className="size-2.5" />
+              {failRate}% lớp làm sai
+            </span>
+          )}
+        </div>
         <span className="ml-auto shrink-0">
           {isSkipped  ? <AlertTriangle className="size-4 text-muted-foreground" /> :
            isCorrect  ? <CheckCircle2  className="size-4 text-green-500" />        :
@@ -176,16 +190,18 @@ const SubmissionDetailPage = () => {
   const [data, setData] = useState<SubmissionDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<AnswerFilter>("all");
+  const [questionStats, setQuestionStats] = useState<QuestionStat[]>([]);
 
   useEffect(() => {
     if (!studentId || !testId) return;
     const load = async () => {
       try {
-        const result = await examService.getSubmissionByStudentTest(
-          Number(studentId),
-          Number(testId)
-        );
+        const [result, stats] = await Promise.all([
+          examService.getSubmissionByStudentTest(Number(studentId), Number(testId)),
+          examService.getQuestionStats(Number(testId)),
+        ]);
         setData(result);
+        setQuestionStats(stats);
       } catch {
         toast.error("Không tìm thấy bài làm của học sinh này");
       } finally {
@@ -260,7 +276,7 @@ const SubmissionDetailPage = () => {
           </div>
           <div className="flex-1 flex flex-col gap-2">
             <div>
-              <h1 className="text-lg font-bold text-foreground">{session.testName}</h1>
+              <h2 className="text-lg font-bold text-foreground">{session.testName}</h2>
               <span className={cn("inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold mt-0.5", rank.cls)}>
                 <Trophy className="size-3" />
                 {rank.label}
@@ -364,9 +380,10 @@ const SubmissionDetailPage = () => {
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            {visibleAnswers.map((a) => (
-              <AnswerCard key={a.questionIndex} answer={a} />
-            ))}
+            {visibleAnswers.map((a) => {
+              const stat = questionStats.find((s) => s.questionOrder === a.questionIndex);
+              return <AnswerCard key={a.questionIndex} answer={a} failRate={stat?.failRate} />;
+            })}
           </div>
         )}
       </div>

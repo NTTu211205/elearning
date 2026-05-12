@@ -182,7 +182,7 @@ const StudentListPage = () => {
   const [sortDir,      setSortDir]      = useState<SortDir>("asc");
   const [page,         setPage]         = useState(1);
 
-  const PAGE_SIZE = 20;
+  const PAGE_SIZE = 15;
 
   const toggleSort = (key: SortKey) => {
     if (key === sortKey) setSortDir((d) => (d === "asc" ? "desc" : "asc"));

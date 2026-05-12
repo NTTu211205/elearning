@@ -2,7 +2,7 @@ import { Dialog } from "radix-ui";
 import { Button } from "@/components/ui/button";
 import type { User } from "@/types/user";
 import { cn } from "@/lib/utils";
-import { ROLE_LABELS, ROLE_COLORS, formatDob } from "../constants";
+import { ROLE_LABELS, ROLE_COLORS, formatDob, formatDateTime } from "../constants";
 import { ModalContent } from "./ModalBase";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 
@@ -21,7 +21,8 @@ export function UserDetailModal({ open, onClose, user }: UserDetailModalProps) {
     { label: "Email", value: user.email },
     { label: "Số điện thoại", value: user.phone ?? "—" },
     { label: "Ngày sinh", value: formatDob(user.dob) },
-    { label: "Ngày tạo", value: user.createdAt ?? "—" },
+    { label: "Ngày tạo", value: formatDateTime(user.createdAt) },
+    { label: "Cập nhật lúc", value: formatDateTime(user.updatedAt) },
   ];
 
   return (

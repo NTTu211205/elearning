@@ -126,9 +126,9 @@ const OverviewTab = ({ cls, students, tests }: { cls: ClassDetail; students: Cla
     <div className="flex flex-col gap-5">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard icon={Users}      label="Học sinh"       value={String(cls.studentCount)}  sub="đang theo học"                      iconColor="text-blue-500"   />
-        <StatCard icon={FileText}   label="Đề thi đã giao" value={String(cls.totalTests)}     sub={`${completedTests} da ket thuc`}    iconColor="text-amber-500"  />
+        <StatCard icon={FileText}   label="Đề thi đã giao" value={String(cls.totalTests)}     sub={`${completedTests} đã kết thúc`}    iconColor="text-amber-500"  />
         <StatCard icon={Medal}      label="Chất lượng"     value={quality.label}                                                      iconColor="text-violet-500" />
-        <StatCard icon={TrendingUp} label="Tỉ lệ đạt"      value={`${passRate}%`}             sub={`${passCount}/${withScore.length} hs`} iconColor="text-green-500" />
+        <StatCard icon={TrendingUp} label="Tỉ lệ đạt"      value={`${passRate}%`}             sub={`${passCount}/${withScore.length} học sinh`} iconColor="text-green-500" />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -261,6 +261,8 @@ const StudentsTab = ({ students, classId }: { students: ClassStudent[]; classId:
   const [rank,    setRank]    = useState<RankFilter>("all");
   const [sortKey, setSortKey] = useState<StudentSortKey>("name");
   const [sortDir, setSortDir] = useState<StudentSortDir>("asc");
+  const [page,    setPage]    = useState(1);
+  const LIMIT = 15;
 
   const toggle = (key: StudentSortKey) => {
     if (key === sortKey) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -295,7 +297,7 @@ const StudentsTab = ({ students, classId }: { students: ClassStudent[]; classId:
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
           <input
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             placeholder="Tìm học sinh..."
             className="h-9 w-full rounded-md border border-input bg-background pl-8 pr-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           />
@@ -304,7 +306,7 @@ const StudentsTab = ({ students, classId }: { students: ClassStudent[]; classId:
           {RANK_FILTERS.map((f) => (
             <button
               key={f.key}
-              onClick={() => setRank(f.key)}
+              onClick={() => { setRank(f.key); setPage(1); }}
               className={cn(
                 "h-7 rounded-full px-3 text-xs font-medium transition-colors border",
                 rank === f.key
@@ -343,11 +345,11 @@ const StudentsTab = ({ students, classId }: { students: ClassStudent[]; classId:
               {filtered.length === 0 && (
                 <tr><td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">Không tìm thấy học sinh</td></tr>
               )}
-              {filtered.map((s, i) => {
+              {filtered.slice((page - 1) * LIMIT, page * LIMIT).map((s, i) => {
                 const rankBadge = getRankBadge(s.avgScore);
                 return (
                   <tr key={s.studentId} className="hover:bg-muted/20 transition-colors">
-                    <td className="px-4 py-2.5 text-center text-xs text-muted-foreground">{i + 1}</td>
+                    <td className="px-4 py-2.5 text-center text-xs text-muted-foreground">{(page - 1) * LIMIT + i + 1}</td>
                     <td className="px-4 py-2.5">
                       <div className="flex items-center gap-2">
                         <div className="size-7 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0">
@@ -405,6 +407,51 @@ const StudentsTab = ({ students, classId }: { students: ClassStudent[]; classId:
           </table>
         </div>
       </div>
+
+      {/* Pagination */}
+      {Math.ceil(filtered.length / LIMIT) > 1 && (
+        <div className="flex items-center justify-center gap-2">
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="h-8 w-8 rounded-md border border-border flex items-center justify-center text-sm text-muted-foreground hover:bg-muted disabled:opacity-40"
+          >
+            ‹
+          </button>
+          {Array.from({ length: Math.ceil(filtered.length / LIMIT) }, (_, i) => i + 1)
+            .filter((p) => p === 1 || p === Math.ceil(filtered.length / LIMIT) || Math.abs(p - page) <= 1)
+            .reduce<(number | "…")[]>((acc, p, idx, arr) => {
+              if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push("…");
+              acc.push(p);
+              return acc;
+            }, [])
+            .map((p, i) =>
+              p === "…" ? (
+                <span key={`e${i}`} className="text-muted-foreground text-sm px-1">…</span>
+              ) : (
+                <button
+                  key={p}
+                  onClick={() => setPage(p as number)}
+                  className={cn(
+                    "h-8 min-w-[32px] rounded-md border text-sm font-medium transition-colors",
+                    page === p
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border text-muted-foreground hover:bg-muted"
+                  )}
+                >
+                  {p}
+                </button>
+              )
+            )}
+          <button
+            onClick={() => setPage((p) => Math.min(Math.ceil(filtered.length / LIMIT), p + 1))}
+            disabled={page === Math.ceil(filtered.length / LIMIT)}
+            className="h-8 w-8 rounded-md border border-border flex items-center justify-center text-sm text-muted-foreground hover:bg-muted disabled:opacity-40"
+          >
+            ›
+          </button>
+        </div>
+      )}
     </div>
   );
 };

@@ -71,4 +71,15 @@ const getSubmissionByStudentTest = async (req, res) => {
     }
 };
 
-module.exports = { startExam, getSession, saveDraft, submitExam, getResult, getSubmissionByStudentTest };
+// GET /exam/test/:testId/question-stats
+const getQuestionStats = async (req, res) => {
+    try {
+        const { testId } = req.params;
+        const result = await studentExamService.getQuestionStats(testId);
+        res.status(200).json({ message: 'Success', data: result });
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+
+module.exports = { startExam, getSession, saveDraft, submitExam, getResult, getSubmissionByStudentTest, getQuestionStats };

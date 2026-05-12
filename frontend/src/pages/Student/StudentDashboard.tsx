@@ -50,7 +50,7 @@ const PendingCard = ({ test, className, studentId }: PendingCardProps) => {
 
   return (
     <div className="rounded-xl border border-border bg-card p-4 flex flex-col gap-3 hover:shadow-sm transition-shadow">
-      <div className="flex items-start justify-between gap-2">
+      <div className="d-flex items-center justify-between">
         <div>
           <p className="font-medium text-sm">{test.testName}</p>
           <p className="text-xs text-muted-foreground mt-0.5">{className}</p>
@@ -62,7 +62,7 @@ const PendingCard = ({ test, className, studentId }: PendingCardProps) => {
         )}
       </div>
 
-      <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+      <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
         <span className="flex items-center gap-1">
           <Clock className="size-3.5" />
           {test.duration} phút

@@ -42,6 +42,10 @@ export function EditClassModal({ open, onClose, cls, onUpdated }: EditClassModal
 
   const onSubmit = async (values: EditClassFormValues) => {
     if (!cls) return;
+    if (values.quantity < cls.studentCount) {
+      toast.error(`Sĩ số không được nhỏ hơn số học sinh hiện tại (${cls.studentCount} học sinh)`);
+      return;
+    }
     try {
       await classService.update(cls.id, {
         ...values,

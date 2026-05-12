@@ -230,7 +230,7 @@ const StudentDetailPage = () => {
               {profile.studentName.split(" ").at(-1)?.[0] ?? "?"}
             </div>
             <div className="text-center">
-              <h1 className="text-lg font-bold text-foreground">{profile.studentName}</h1>
+              <h2 className="text-lg font-bold text-foreground">{profile.studentName}</h2>
               <span className={cn("inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium mt-1", accent.badge)}>
                 <GraduationCap className="size-3" />Lớp {profile.className} · {profile.subjectName}
               </span>
@@ -257,7 +257,11 @@ const StudentDetailPage = () => {
               <CalendarDays className="size-4 text-muted-foreground shrink-0" />
               <div>
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Ngày sinh</p>
-                <p className="text-sm font-medium text-foreground">{profile.dob ?? "—"}</p>
+                <p className="text-sm font-medium text-foreground">
+                  {profile.dob
+                    ? new Date(profile.dob).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" })
+                    : "—"}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-2.5 rounded-xl bg-muted/30 px-3 py-2.5">

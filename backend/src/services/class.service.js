@@ -116,6 +116,15 @@ const getClassBySubjectId = async (subjectId) => {
 const updateClass = async(classData) => {
     const {classId, teacherId, subjectId, quantity, name, status} = classData;
 
+    // Check: new quantity must not be less than current enrolled student count
+    const [[{ currentStudents }]] = await db.execute(
+        'SELECT COUNT(*) AS currentStudents FROM enrollment WHERE class_id = ? AND status = "enrolled"',
+        [classId]
+    );
+    if (quantity < currentStudents) {
+        throw new Error(`Sĩ số không được nhỏ hơn số học sinh hiện tại (${currentStudents} học sinh)`);
+    }
+
     const [result] = await db.execute(
         'UPDATE class SET teacher_id = ?, subject_id = ?, quantity = ?, name = ?, status = ? WHERE id = ?',
         [teacherId, subjectId, quantity, name, status, classId]

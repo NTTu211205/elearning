@@ -25,7 +25,7 @@ const createUser = async (userData) => {
 
 //get all user include: active and non-active
 const getAllUser = async() => {
-    const [result] = await db.execute('SELECT id, name, dob, role, email, phone, status FROM user where role != "admin"');
+    const [result] = await db.execute('SELECT id, name, dob, role, email, phone, status, createdAt, updatedAt FROM user where role != "admin"');
     return result;
 }
 
@@ -33,7 +33,7 @@ const getUserFollowingStatus = async(status) => {
     if (!status) {
         throw new Error('Status not valid');
     }
-    const [result] = await db.execute('SELECT id, name, dob, role, email, phone, status FROM user WHERE status = ?', [status]);
+    const [result] = await db.execute('SELECT id, name, dob, role, email, phone, status, createdAt, updatedAt FROM user WHERE status = ?', [status]);
     return result;
 }
 

@@ -7,9 +7,11 @@ import {
   MinusCircle,
   ArrowLeft,
   GraduationCap,
+  AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import api from "@/lib/axios";
+import { examService, type QuestionStat } from "@/services/examService";
 
 type ApiResponse<T> = { message: string; data: T };
 
@@ -23,6 +25,7 @@ interface AnswerRecord {
 
 interface ExamResultData {
   session: {
+    test_id: number;
     testName: string;
     duration: number;
     num_question: number;
@@ -42,12 +45,17 @@ const ExamResultPage = () => {
   const navigate = useNavigate();
   const [data, setData] = useState<ExamResultData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [questionStats, setQuestionStats] = useState<QuestionStat[]>([]);
 
   useEffect(() => {
     if (!doexamId) return;
     api
       .get<ApiResponse<ExamResultData>>(`/exam/${doexamId}/result`)
-      .then((res) => setData(res.data.data))
+      .then((res) => {
+        setData(res.data.data);
+        return examService.getQuestionStats(res.data.data.session.test_id);
+      })
+      .then((stats) => setQuestionStats(stats))
       .catch(() => navigate("/student/classes", { replace: true }))
       .finally(() => setLoading(false));
   }, [doexamId, navigate]);
@@ -130,6 +138,7 @@ const ExamResultPage = () => {
             const isCorrect = a.chosenIndex !== null && a.chosenIndex === a.correctIndex;
             const isWrong = a.chosenIndex !== null && a.chosenIndex !== a.correctIndex;
             const isSkipped = a.chosenIndex === null;
+            const stat = questionStats.find((s) => s.questionOrder === a.questionIndex);
 
             return (
               <div
@@ -145,10 +154,24 @@ const ExamResultPage = () => {
                   {isCorrect && <CheckCircle2 className="size-4 text-green-600 mt-0.5 shrink-0" />}
                   {isWrong && <XCircle className="size-4 text-red-500 mt-0.5 shrink-0" />}
                   {isSkipped && <MinusCircle className="size-4 text-muted-foreground mt-0.5 shrink-0" />}
-                  <p className="text-sm font-medium leading-snug">
-                    <span className="text-muted-foreground mr-1">Câu {a.questionIndex + 1}.</span>
-                    {a.questionText}
-                  </p>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium leading-snug">
+                      <span className="text-muted-foreground mr-1">Câu {a.questionIndex + 1}.</span>
+                      {a.questionText}
+                    </p>
+                    {stat !== undefined && (
+                      <span className={cn(
+                        "inline-flex items-center gap-1 mt-1 text-[10px] font-medium rounded-full px-2 py-0.5",
+                        stat.failRate >= 70 ? "bg-red-100 text-red-600" :
+                        stat.failRate >= 50 ? "bg-orange-100 text-orange-600" :
+                        stat.failRate >= 30 ? "bg-yellow-100 text-yellow-600" :
+                        "bg-green-100 text-green-600"
+                      )}>
+                        <AlertTriangle className="size-2.5" />
+                        {stat.failRate}% lớp làm sai
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div className="grid gap-1.5 pl-6">
                   {a.options.map((opt, i) => {

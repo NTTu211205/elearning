@@ -19,6 +19,7 @@ const ClassListPage = () => {
   const [manageClass, setManageClass] = useState<AdminClass | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "ended">("all");
+  const [page, setPage] = useState(1);
 
   const fetchClasses = useCallback(async () => {
     setLoading(true);
@@ -62,6 +63,11 @@ const ClassListPage = () => {
     const matchStatus = statusFilter === "all" || c.status === statusFilter;
     return matchSearch && matchStatus;
   });
+
+  const LIMIT = 15;
+  useEffect(() => { setPage(1); }, [search, statusFilter]);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / LIMIT));
+  const currentItems = filtered.slice((page - 1) * LIMIT, page * LIMIT);
 
   return (
     <div className="flex flex-col gap-6">
@@ -135,9 +141,9 @@ const ClassListPage = () => {
                 </tr>
               )}
               {!loading &&
-                filtered.map((cls, idx) => (
+                currentItems.map((cls, idx) => (
                   <tr key={cls.id} className="hover:bg-muted/30 transition-colors">
-                    <td className="px-4 py-3 text-center text-muted-foreground">{idx + 1}</td>
+                    <td className="px-4 py-3 text-center text-muted-foreground">{(page - 1) * LIMIT + idx + 1}</td>
                     <td className="px-4 py-3 font-medium text-foreground whitespace-nowrap">
                       {cls.name}
                     </td>
@@ -189,6 +195,51 @@ const ClassListPage = () => {
           </table>
         </div>
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2">
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="h-8 w-8 rounded-md border border-border flex items-center justify-center text-sm text-muted-foreground hover:bg-muted disabled:opacity-40"
+          >
+            ‹
+          </button>
+          {Array.from({ length: totalPages }, (_, i) => i + 1)
+            .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+            .reduce<(number | "…")[]>((acc, p, idx, arr) => {
+              if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push("…");
+              acc.push(p);
+              return acc;
+            }, [])
+            .map((p, i) =>
+              p === "…" ? (
+                <span key={`e${i}`} className="text-muted-foreground text-sm px-1">…</span>
+              ) : (
+                <button
+                  key={p}
+                  onClick={() => setPage(p as number)}
+                  className={cn(
+                    "h-8 min-w-[32px] rounded-md border text-sm font-medium transition-colors",
+                    page === p
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border text-muted-foreground hover:bg-muted"
+                  )}
+                >
+                  {p}
+                </button>
+              )
+            )}
+          <button
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+            className="h-8 w-8 rounded-md border border-border flex items-center justify-center text-sm text-muted-foreground hover:bg-muted disabled:opacity-40"
+          >
+            ›
+          </button>
+        </div>
+      )}
 
       <CreateClassModal
         open={createOpen}

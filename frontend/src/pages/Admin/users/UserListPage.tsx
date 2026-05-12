@@ -13,13 +13,30 @@ import { cn } from "@/lib/utils";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-/** Chuyển đổi yyyy-mm-dd (từ DB) → dd-mm-yyyy để hiển thị */
+/** Chuyển ISO string hoặc yyyy-mm-dd → dd/mm/yyyy để hiển thị */
 function formatDob(dob?: string): string {
   if (!dob) return "—";
-  const parts = dob.split("-");
-  if (parts.length !== 3) return dob;
-  const [y, m, d] = parts;
-  return `${d}-${m}-${y}`;
+  const date = new Date(dob);
+  if (!isNaN(date.getTime())) {
+    const d = String(date.getUTCDate()).padStart(2, "0");
+    const m = String(date.getUTCMonth() + 1).padStart(2, "0");
+    const y = date.getUTCFullYear();
+    return `${d}/${m}/${y}`;
+  }
+  return dob;
+}
+
+/** Chuyển ISO datetime string → dd/mm/yyyy HH:mm để hiển thị */
+function formatDateTime(dt?: string): string {
+  if (!dt) return "—";
+  const date = new Date(dt);
+  if (isNaN(date.getTime())) return "—";
+  const d = String(date.getDate()).padStart(2, "0");
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const y = date.getFullYear();
+  const hh = String(date.getHours()).padStart(2, "0");
+  const mm = String(date.getMinutes()).padStart(2, "0");
+  return `${d}/${m}/${y} ${hh}:${mm}`;
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -321,7 +338,8 @@ function UserDetailModal({ open, onClose, user }: UserDetailModalProps) {
     { label: "Email", value: user.email },
     { label: "Số điện thoại", value: user.phone ?? "—" },
     { label: "Ngày sinh", value: formatDob(user.dob) },
-    { label: "Ngày tạo", value: user.createdAt ?? "—" },
+    { label: "Ngày tạo", value: formatDateTime(user.createdAt) },
+    { label: "Cập nhật lúc", value: formatDateTime(user.updatedAt) },
   ];
 
   return (
@@ -574,6 +592,7 @@ const UserListPage = () => {
   const [detailUser, setDetailUser] = useState<User | null>(null);
   const [deleteUser, setDeleteUser] = useState<User | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     fetchUsers();
@@ -581,43 +600,35 @@ const UserListPage = () => {
 
   const filteredUsers = getFilteredUsers();
 
+  const LIMIT = 15;
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / LIMIT));
+  const currentUsers = filteredUsers.slice((page - 1) * LIMIT, page * LIMIT);
+
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Quản lý người dùng</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {users.length} người dùng trong hệ thống
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={() => setImportOpen(true)}>
-            <Upload className="size-4" />
-            Import CSV
-          </Button>
-          <Button size="sm" onClick={() => setCreateOpen(true)}>
-            <Plus className="size-4" />
-            Thêm người dùng
-          </Button>
-        </div>
+      <div>
+        <h2 className="text-2xl font-bold text-foreground">Quản lý người dùng</h2>
+        <p className="text-sm text-muted-foreground mt-0.5">
+          {users.length} người dùng trong hệ thống
+        </p>
       </div>
 
-      {/* Filters */}
+      {/* Filters + Actions */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
           <Input
             placeholder="Tìm kiếm tên, email..."
             value={filters.search}
-            onChange={(e) => setFilters({ search: e.target.value })}
+            onChange={(e) => { setFilters({ search: e.target.value }); setPage(1); }}
             className="pl-8"
           />
         </div>
         <select
           className={cn(selectClass, "w-full sm:w-44")}
           value={filters.role}
-          onChange={(e) => setFilters({ role: e.target.value as typeof filters.role })}
+          onChange={(e) => { setFilters({ role: e.target.value as typeof filters.role }); setPage(1); }}
         >
           <option value="all">Tất cả vai trò</option>
           <option value="student">Học sinh</option>
@@ -627,12 +638,22 @@ const UserListPage = () => {
         <select
           className={cn(selectClass, "w-full sm:w-44")}
           value={filters.status}
-          onChange={(e) => setFilters({ status: e.target.value as typeof filters.status })}
+          onChange={(e) => { setFilters({ status: e.target.value as typeof filters.status }); setPage(1); }}
         >
           <option value="all">Tất cả trạng thái</option>
           <option value="active">Hoạt động</option>
           <option value="inactive">Vô hiệu</option>
         </select>
+        <div className="flex items-center gap-2 sm:ml-auto">
+          <Button size="sm" variant="outline" onClick={() => setImportOpen(true)}>
+            <Upload className="size-4" />
+            Import CSV
+          </Button>
+          <Button size="sm" onClick={() => setCreateOpen(true)}>
+            <Plus className="size-4" />
+            Thêm người dùng
+          </Button>
+        </div>
       </div>
 
       {/* Table */}
@@ -667,7 +688,7 @@ const UserListPage = () => {
                 </tr>
               )}
               {!loading &&
-                filteredUsers.map((user) => (
+                currentUsers.map((user) => (
                   <tr key={user.id} className={cn("hover:bg-muted/30 transition-colors", user.status === 0 && "opacity-60")}>
                     <td className="px-4 py-3 font-medium text-foreground whitespace-nowrap">
                       {user.name}
@@ -732,6 +753,51 @@ const UserListPage = () => {
           </table>
         </div>
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2">
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="h-8 w-8 rounded-md border border-border flex items-center justify-center text-sm text-muted-foreground hover:bg-muted disabled:opacity-40"
+          >
+            ‹
+          </button>
+          {Array.from({ length: totalPages }, (_, i) => i + 1)
+            .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+            .reduce<(number | "…")[]>((acc, p, idx, arr) => {
+              if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push("…");
+              acc.push(p);
+              return acc;
+            }, [])
+            .map((p, i) =>
+              p === "…" ? (
+                <span key={`e${i}`} className="text-muted-foreground text-sm px-1">…</span>
+              ) : (
+                <button
+                  key={p}
+                  onClick={() => setPage(p as number)}
+                  className={cn(
+                    "h-8 min-w-[32px] rounded-md border text-sm font-medium transition-colors",
+                    page === p
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border text-muted-foreground hover:bg-muted"
+                  )}
+                >
+                  {p}
+                </button>
+              )
+            )}
+          <button
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+            className="h-8 w-8 rounded-md border border-border flex items-center justify-center text-sm text-muted-foreground hover:bg-muted disabled:opacity-40"
+          >
+            ›
+          </button>
+        </div>
+      )}
 
       {/* Modals */}
       <CreateUserModal open={createOpen} onClose={() => setCreateOpen(false)} />

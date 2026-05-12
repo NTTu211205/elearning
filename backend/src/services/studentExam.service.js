@@ -289,4 +289,78 @@ const getSubmissionByStudentTest = async (studentId, testId) => {
     return { session, answers };
 };
 
-module.exports = { startExam, getExamSession, saveDraft, submitExam, getExamResult, getSubmissionByStudentTest };
+// ─── GET QUESTION STATS (Aggregation Pipeline) ────────────────────────────────
+
+/**
+ * Tính tỉ lệ fail theo từng câu hỏi của một đề thi.
+ * Sử dụng MongoDB Aggregation Pipeline trên StudentAnswer + QuestionBank.
+ * Trả về mảng câu hỏi kèm { total, correct, failRate } sắp xếp theo thứ tự câu.
+ */
+const getQuestionStats = async (testId) => {
+    const pipeline = [
+        { $match: { testId: Number(testId) } },
+        { $unwind: '$answers' },
+        {
+            $lookup: {
+                from: 'question_bank',
+                localField: 'testId',
+                foreignField: 'testId',
+                as: 'bank',
+            },
+        },
+        { $unwind: '$bank' },
+        { $unwind: '$bank.questions' },
+        {
+            $match: {
+                $expr: { $eq: [{ $toString: '$bank.questions._id' }, '$answers.questionId'] },
+            },
+        },
+        {
+            $addFields: {
+                isCorrect: {
+                    $and: [
+                        { $ne: ['$answers.chosenIndex', null] },
+                        { $eq: ['$answers.chosenIndex', '$bank.questions.correctIndex'] },
+                    ],
+                },
+            },
+        },
+        {
+            $group: {
+                _id: '$answers.questionId',
+                questionText:  { $first: '$bank.questions.text' },
+                questionOrder: { $first: '$bank.questions.order' },
+                total:   { $sum: 1 },
+                correct: { $sum: { $cond: ['$isCorrect', 1, 0] } },
+            },
+        },
+        {
+            $addFields: {
+                failRate: {
+                    $round: [
+                        {
+                            $multiply: [
+                                { $divide: [{ $subtract: ['$total', '$correct'] }, '$total'] },
+                                100,
+                            ],
+                        },
+                        1,
+                    ],
+                },
+            },
+        },
+        { $sort: { questionOrder: 1 } },
+    ];
+
+    const results = await StudentAnswer.aggregate(pipeline);
+    return results.map((r) => ({
+        questionId:    r._id,
+        questionText:  r.questionText,
+        questionOrder: r.questionOrder,
+        total:         r.total,
+        correct:       r.correct,
+        failRate:      r.failRate,
+    }));
+};
+
+module.exports = { startExam, getExamSession, saveDraft, submitExam, getExamResult, getSubmissionByStudentTest, getQuestionStats };

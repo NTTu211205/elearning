@@ -12,6 +12,15 @@ import type {
 
 type ApiResponse<T> = { message: string; data: T };
 
+export interface QuestionStat {
+  questionId: string;
+  questionText: string;
+  questionOrder: number;
+  total: number;
+  correct: number;
+  failRate: number;
+}
+
 export const enrollmentService = {
   getClassesWithTests: async (studentId: number): Promise<StudentClass[]> => {
     const res = await api.get<ApiResponse<StudentClass[]>>(
@@ -54,6 +63,11 @@ export const examService = {
     const res = await api.get<ApiResponse<SubmissionDetail>>(
       `/exam/result/student/${studentId}/test/${testId}`
     );
+    return res.data.data;
+  },
+
+  getQuestionStats: async (testId: number): Promise<QuestionStat[]> => {
+    const res = await api.get<ApiResponse<QuestionStat[]>>(`/exam/test/${testId}/question-stats`);
     return res.data.data;
   },
 };

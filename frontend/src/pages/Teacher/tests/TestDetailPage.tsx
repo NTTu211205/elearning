@@ -4,11 +4,12 @@ import {
   ArrowLeft, Users, TrendingUp, Target, Trophy, Search,
   FileText, Clock, CalendarDays, BookOpen, ArrowUpDown,
   ArrowUp, ArrowDown, GraduationCap, CheckCircle2, XCircle,
-  BarChart2, Pencil,
+  BarChart2, Pencil, AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { testService, type TestDetailFull, type StudentResult } from "@/services/testService";
+import { examService, type QuestionStat } from "@/services/examService";
 
 // ─────────────────────────────────────────────
 // Helpers
@@ -150,6 +151,62 @@ const ScoreBadge = ({ score }: { score: number | null }) => {
 };
 
 // ─────────────────────────────────────────────
+// Question fail-rate chart
+// ─────────────────────────────────────────────
+const QuestionFailRateChart = ({ stats }: { stats: QuestionStat[] }) => {
+  if (stats.length === 0) {
+    return (
+      <div className="flex flex-col items-center gap-2 py-10 text-muted-foreground">
+        <AlertTriangle className="size-8 opacity-30" />
+        <p className="text-sm">Chưa có học sinh nào nộp bài</p>
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-2">
+      {stats.map((s, i) => (
+        <div key={s.questionId} className="flex items-center gap-3 group">
+          <span className="w-6 text-xs font-bold text-muted-foreground text-right shrink-0">
+            {i + 1}
+          </span>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-foreground truncate mb-1 group-hover:text-clip" title={s.questionText}>
+              {s.questionText}
+            </p>
+            <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+              <div
+                className={cn(
+                  "h-full rounded-full transition-all duration-700",
+                  s.failRate >= 70 ? "bg-red-500" :
+                  s.failRate >= 50 ? "bg-orange-400" :
+                  s.failRate >= 30 ? "bg-yellow-400" :
+                  "bg-green-400"
+                )}
+                style={{ width: `${s.failRate}%` }}
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className={cn(
+              "text-xs font-bold tabular-nums w-10 text-right",
+              s.failRate >= 70 ? "text-red-600" :
+              s.failRate >= 50 ? "text-orange-500" :
+              s.failRate >= 30 ? "text-yellow-600" :
+              "text-green-600"
+            )}>
+              {s.failRate}%
+            </span>
+            <span className="text-[10px] text-muted-foreground w-14 shrink-0">
+              {s.total - s.correct}/{s.total} sai
+            </span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────
 // Skeleton
 // ─────────────────────────────────────────────
 const Skeleton = ({ className }: { className?: string }) => (
@@ -167,6 +224,7 @@ const TestDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [testMeta, setTestMeta] = useState<TestDetailFull | null>(null);
   const [allResults, setAllResults] = useState<StudentResult[]>([]);
+  const [questionStats, setQuestionStats] = useState<QuestionStat[]>([]);
 
   const [scoreFilter, setScoreFilter]   = useState<ScoreFilter>("all");
   const [nameSearch, setNameSearch]     = useState("");
@@ -177,12 +235,14 @@ const TestDetailPage = () => {
     if (!testId) return;
     setLoading(true);
     try {
-      const [meta, results] = await Promise.all([
+      const [meta, results, stats] = await Promise.all([
         testService.getDetail(testId),
         testService.getResults(testId),
+        examService.getQuestionStats(testId),
       ]);
       setTestMeta(meta);
       setAllResults(results);
+      setQuestionStats(stats);
     } catch (err: any) {
       toast.error(err?.response?.data?.message ?? "Không thể tải dữ liệu đề thi");
     } finally {
@@ -303,7 +363,7 @@ const TestDetailPage = () => {
           </div>
           <div className="flex-1 min-w-0 flex flex-col gap-3">
             <div className="flex flex-wrap items-start gap-2">
-              <h1 className="text-lg font-bold text-foreground flex-1 min-w-0">{testMeta.name}</h1>
+              <h2 className="text-lg font-bold text-foreground flex-1 min-w-0">{testMeta.name}</h2>
               <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold", statusMeta.cls)}>
                 {statusMeta.label}
               </span>
@@ -354,9 +414,24 @@ const TestDetailPage = () => {
         />
       </div>
 
-      {/* ── Score histogram ── */}
-      <div className="rounded-xl border border-border bg-card p-4" style={{ minHeight: 220 }}>
-        <ScoreHistogram results={allResults} />
+      {/* ── Score histogram + Question fail rate (side by side) ── */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="rounded-xl border border-border bg-card p-4" style={{ minHeight: 220 }}>
+          <ScoreHistogram results={allResults} />
+        </div>
+
+        <div className="rounded-xl border border-border bg-card p-4 flex flex-col">
+          <div className="flex items-center gap-2 mb-4 shrink-0">
+            <AlertTriangle className="size-4 text-orange-500" />
+            <h3 className="text-sm font-semibold text-foreground">Tỉ lệ sai theo câu hỏi</h3>
+            <span className="ml-auto text-xs text-muted-foreground">
+              {questionStats.length > 0 ? `${questionStats.length} câu` : ""}
+            </span>
+          </div>
+          <div className="overflow-y-auto" style={{ maxHeight: 240 }}>
+            <QuestionFailRateChart stats={questionStats} />
+          </div>
+        </div>
       </div>
 
       {/* ── Student table ── */}

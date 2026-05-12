@@ -70,6 +70,7 @@ const TestListPage = () => {
   const [classFilter, setClassFilter] = useState<string>("all");
   const [deleteTarget, setDeleteTarget] = useState<TestListItem | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [page, setPage] = useState(1);
 
   const fetchTests = useCallback(async () => {
     if (!user) return;
@@ -106,6 +107,11 @@ const TestListPage = () => {
       }),
     [tests, search, classFilter]
   );
+
+  const LIMIT = 15;
+  useEffect(() => { setPage(1); }, [search, classFilter]);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / LIMIT));
+  const currentItems = filtered.slice((page - 1) * LIMIT, page * LIMIT);
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
@@ -197,10 +203,10 @@ const TestListPage = () => {
                   </td>
                 </tr>
               ) : (
-                filtered.map((test, index) => (
+                currentItems.map((test, index) => (
                   <tr key={test.id} className="hover:bg-muted/30 transition-colors">
                     <td className="px-4 py-3 text-muted-foreground text-center w-10">
-                      {index + 1}
+                      {(page - 1) * LIMIT + index + 1}
                     </td>
                     <td className="px-4 py-3 font-medium text-foreground whitespace-nowrap max-w-[200px] truncate">
                       {test.name}
@@ -280,6 +286,51 @@ const TestListPage = () => {
           </table>
         </div>
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2">
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="h-8 w-8 rounded-md border border-border flex items-center justify-center text-sm text-muted-foreground hover:bg-muted disabled:opacity-40"
+          >
+            ‹
+          </button>
+          {Array.from({ length: totalPages }, (_, i) => i + 1)
+            .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+            .reduce<(number | "…")[]>((acc, p, idx, arr) => {
+              if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push("…");
+              acc.push(p);
+              return acc;
+            }, [])
+            .map((p, i) =>
+              p === "…" ? (
+                <span key={`e${i}`} className="text-muted-foreground text-sm px-1">…</span>
+              ) : (
+                <button
+                  key={p}
+                  onClick={() => setPage(p as number)}
+                  className={cn(
+                    "h-8 min-w-[32px] rounded-md border text-sm font-medium transition-colors",
+                    page === p
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border text-muted-foreground hover:bg-muted"
+                  )}
+                >
+                  {p}
+                </button>
+              )
+            )}
+          <button
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+            className="h-8 w-8 rounded-md border border-border flex items-center justify-center text-sm text-muted-foreground hover:bg-muted disabled:opacity-40"
+          >
+            ›
+          </button>
+        </div>
+      )}
 
       <DeleteTestModal
         test={deleteTarget}
