@@ -65,4 +65,12 @@ export const enrollmentStudentService = {
     );
     return res.data.data;
   },
+
+  getMyRankInClass: async (
+    classId: number,
+    studentId: number
+  ): Promise<{ rank: number | null; totalStudents: number | null; averageScore: number | null }> => {
+    const res = await api.get(`/enrollment/class/${classId}/student/${studentId}/rank`);
+    return res.data.data;
+  },
 };

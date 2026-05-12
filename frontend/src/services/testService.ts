@@ -1,5 +1,5 @@
 import api from "../lib/axios";
-import type { TestListItem, Question, TestSettings, TestType } from "@/types/test";
+import type { TestListItem, Question, TestSettings } from "@/types/test";
 
 type ApiResponse<T> = { message: string; data: T };
 
@@ -12,7 +12,6 @@ export interface CreateTestPayload {
   startAt: string;
   endAt: string;
   numQuestion: number;
-  type: TestType;
 }
 
 export interface UpdateTestPayload {
@@ -23,7 +22,6 @@ export interface UpdateTestPayload {
   startAt: string;
   endAt: string;
   numQuestion: number;
-  type: TestType;
 }
 
 export interface TestDetail extends TestSettings {
@@ -31,7 +29,6 @@ export interface TestDetail extends TestSettings {
   num_question: number;
   createBy: number;
   class_id: number | null;
-  type: TestType;
 }
 
 const formatDateForInput = (d: string | Date | null | undefined): string => {
@@ -57,7 +54,6 @@ export interface TestDetailFull {
   startAt: string;
   endAt: string;
   createBy: number;
-  type: TestType;
 }
 
 export interface StudentResult {
@@ -81,8 +77,8 @@ export interface ClassTest {
   num_question: number;
   createdByName: string | null;
   submittedCount: number;
+  passCount: number;
   avgScore: number | null;
-  type: TestType;
 }
 
 export const testService = {
@@ -99,7 +95,6 @@ export const testService = {
       endAt: t.endAt ?? null,
       duration: t.duration,
       questionCount: t.num_question ?? 0,
-      type: (t.type ?? "regular") as TestType,
     }));
   },
 
@@ -117,7 +112,6 @@ export const testService = {
       endAt: formatDateForInput(t.endAt),
       num_question: t.num_question,
       createBy: t.createBy,
-      type: (t.type ?? "regular") as TestType,
     };
   },
 
@@ -154,7 +148,6 @@ export const testService = {
       startAt: t.startAt ?? "",
       endAt: t.endAt ?? "",
       createBy: t.createBy,
-      type: (t.type ?? "regular") as TestType,
     };
   },
 
@@ -192,8 +185,8 @@ export const testService = {
       num_question: t.num_question ?? 0,
       createdByName: t.createdByName ?? null,
       submittedCount: t.submittedCount ?? 0,
+      passCount: t.passCount ?? 0,
       avgScore: t.avgScore !== null && t.avgScore !== undefined ? Number(t.avgScore) : null,
-      type: (t.type ?? "regular") as TestType,
     }));
   },
 

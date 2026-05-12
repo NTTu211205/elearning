@@ -18,6 +18,7 @@ export interface StudentClass {
   className: string;
   classStatus: "active" | "ended";
   subjectName: string;
+  averageScore: number | null;
   tests: StudentTest[];
 }
 

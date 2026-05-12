@@ -54,7 +54,7 @@ const TeacherDashboard = () => {
 
       {/* Greeting */}
       <div>
-        <h2 className="text-sm font-semibold text-foreground">Xin chào, {firstName} 👋</h2>
+        <h2 className="text-sm font-semibold text-foreground">Chào mừng quay lại {firstName}</h2>
         <p className="text-sm text-muted-foreground mt-0.5">
           Đây là tổng quan lớp học của bạn hôm nay.
         </p>

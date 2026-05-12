@@ -11,12 +11,13 @@ import {
   CalendarDays,
   GraduationCap,
   AlertCircle,
+  Medal,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useStudentStore } from "@/stores/useStudentStore";
 import { useAuthStore } from "@/stores/useAuthStore";
-import { examService } from "@/services/examService";
+import { examService, enrollmentStudentService } from "@/services/examService";
 import type { StudentClass, StudentTest } from "@/types/exam";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -160,6 +161,11 @@ const StudentClassesPage = () => {
   const { classes, loading, fetchClasses } = useStudentStore();
   const { user } = useAuthStore();
   const [selectedClassId, setSelectedClassId] = useState<number | null>(null);
+  const [rankInfo, setRankInfo] = useState<{
+    rank: number | null;
+    totalStudents: number | null;
+    averageScore: number | null;
+  } | null>(null);
 
   useEffect(() => {
     if (user?.id) fetchClasses(user.id);
@@ -170,6 +176,16 @@ const StudentClassesPage = () => {
       setSelectedClassId(classes[0].classId);
     }
   }, [classes, selectedClassId]);
+
+  // Fetch rank whenever selected class changes
+  useEffect(() => {
+    if (!selectedClassId || !user?.id) return;
+    setRankInfo(null);
+    enrollmentStudentService
+      .getMyRankInClass(selectedClassId, user.id)
+      .then(setRankInfo)
+      .catch(() => setRankInfo(null));
+  }, [selectedClassId, user?.id]);
 
   const selectedClass: StudentClass | undefined = classes.find(
     (c) => c.classId === selectedClassId
@@ -228,6 +244,11 @@ const StudentClassesPage = () => {
                           <span className="ml-1.5 text-orange-500">(Đã kết thúc)</span>
                         )}
                       </p>
+                      {cls.averageScore !== null && (
+                        <p className="text-xs font-semibold text-primary mt-0.5">
+                          ĐTB: {cls.averageScore.toFixed(2)}
+                        </p>
+                      )}
                     </div>
                     <ChevronRight className="size-4 text-muted-foreground shrink-0" />
                   </button>
@@ -243,17 +264,17 @@ const StudentClassesPage = () => {
             <div className="flex flex-col gap-4">
               {/* Class header */}
               <div className="rounded-xl border border-border bg-card p-4">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
                   <div className="size-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                     <GraduationCap className="size-5 text-primary" />
                   </div>
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <h2 className="font-semibold">{selectedClass.className}</h2>
                     <p className="text-sm text-muted-foreground">{selectedClass.subjectName}</p>
                   </div>
                   <span
                     className={cn(
-                      "ml-auto inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium",
+                      "inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium",
                       selectedClass.classStatus === "active"
                         ? "bg-green-100 text-green-700"
                         : "bg-gray-100 text-gray-500"
@@ -262,6 +283,51 @@ const StudentClassesPage = () => {
                     {selectedClass.classStatus === "active" ? "Đang hoạt động" : "Đã kết thúc"}
                   </span>
                 </div>
+
+                {/* Rank + score strip */}
+                {rankInfo && rankInfo.rank !== null ? (
+                  <div className="mt-3 pt-3 border-t border-border flex items-center gap-4 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <div className="size-8 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
+                        <Medal className="size-4 text-amber-500" />
+                      </div>
+                      <div>
+                        <p className="text-[11px] text-muted-foreground leading-none mb-0.5">Xếp hạng trong lớp</p>
+                        <p className="text-base font-bold text-foreground leading-none">
+                          #{rankInfo.rank}
+                          <span className="text-xs font-normal text-muted-foreground ml-1">
+                            / {rankInfo.totalStudents} học sinh
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="size-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                        <Trophy className="size-4 text-blue-500" />
+                      </div>
+                      <div>
+                        <p className="text-[11px] text-muted-foreground leading-none mb-0.5">Điểm trung bình</p>
+                        <p className={cn(
+                          "text-base font-bold leading-none",
+                          rankInfo.averageScore !== null && rankInfo.averageScore < 5
+                            ? "text-red-500"
+                            : rankInfo.averageScore !== null && rankInfo.averageScore < 6.5
+                            ? "text-orange-500"
+                            : "text-green-600"
+                        )}>
+                          {rankInfo.averageScore !== null
+                            ? Number(rankInfo.averageScore).toFixed(2)
+                            : "—"}
+                          <span className="text-xs font-normal text-muted-foreground ml-1">/10</span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : selectedClass.averageScore === null ? (
+                  <p className="mt-3 pt-3 border-t border-border text-xs text-muted-foreground">
+                    Chưa có điểm — hãy hoàn thành các bài kiểm tra để xem xếp hạng.
+                  </p>
+                ) : null}
               </div>
 
               {/* Tests */}

@@ -161,6 +161,28 @@ const getStudentDetailInClass = async (req, res) => {
     }
 };
 
+// GET /enrollment/class/:classId/bottom-students — Lấy top 10 HS điểm thấp nhất (Window Function)
+const getBottomStudents = async (req, res) => {
+    try {
+        const { classId } = req.params;
+        const result = await enrollmentService.getBottomStudentsByClass(classId);
+        res.status(200).json({ message: 'Success', data: result });
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+
+// GET /enrollment/class/:classId/student/:studentId/rank — Lấy rank của học sinh trong lớp
+const getMyRankInClass = async (req, res) => {
+    try {
+        const { classId, studentId } = req.params;
+        const result = await enrollmentService.getStudentRankInClass(classId, studentId);
+        res.status(200).json({ message: 'Success', data: result });
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+
 module.exports = {
     enrollStudent,
     enrollStudents,
@@ -172,4 +194,6 @@ module.exports = {
     updateAverageScore,
     removeStudent,
     removeAllStudentsFromClass,
+    getBottomStudents,
+    getMyRankInClass,
 };

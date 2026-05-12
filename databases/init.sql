@@ -50,8 +50,7 @@ CREATE TABLE `test` (
   `startAt` datetime DEFAULT NULL,
   `endAt` datetime DEFAULT NULL,
   `duration` int NOT NULL,
-  `num_question` int NOT NULL,
-  `type` ENUM('regular','midterm','final') NOT NULL DEFAULT 'regular'
+  `num_question` int NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `user` (
@@ -139,19 +138,26 @@ SET FOREIGN_KEY_CHECKS = 0;
 --    password hash của '123456' (bcrypt)
 -- ============================================================
 INSERT INTO `user` (id, name, dob, role, email, phone, status, password, createdAt, updatedAt) VALUES
-(1,  'Nguyễn Văn An',    '1985-03-12', 'teacher', 'nguyenvanan@gmail.com',    '0901111001', 1, '$2a$12$oiwwPvK8FuInO4MYtmAzcOYfi7VdRDbh/.vvK//O3IkWdjKG4wP/W', '2025-01-10 08:00:00', '2025-01-10 08:00:00'),
-(2,  'Trần Thị Bình',    '1988-07-25', 'teacher', 'tranthihinh@gmail.com',    '0901111002', 1, '$2a$12$oiwwPvK8FuInO4MYtmAzcOYfi7VdRDbh/.vvK//O3IkWdjKG4wP/W', '2025-01-10 08:05:00', '2025-01-10 08:05:00'),
-(3,  'Lê Minh Cường',    '1990-11-08', 'teacher', 'leminhcuong@gmail.com',    '0901111003', 1, '$2a$12$oiwwPvK8FuInO4MYtmAzcOYfi7VdRDbh/.vvK//O3IkWdjKG4wP/W', '2025-01-11 09:00:00', '2025-01-11 09:00:00'),
-(4,  'Phạm Thị Dung',    '1992-05-18', 'student', 'phamthidung@gmail.com',       '0912222001', 1, '$2a$12$oiwwPvK8FuInO4MYtmAzcOYfi7VdRDbh/.vvK//O3IkWdjKG4wP/W', '2025-02-01 10:00:00', '2025-02-01 10:00:00'),
-(5,  'Hoàng Văn Em',     '2003-09-30', 'student', 'hoangvanem@gmail.com',        '0912222002', 1, '$2a$12$oiwwPvK8FuInO4MYtmAzcOYfi7VdRDbh/.vvK//O3IkWdjKG4wP/W', '2025-02-01 10:10:00', '2025-02-01 10:10:00'),
-(6,  'Vũ Thị Phương',    '2002-12-14', 'student', 'vuthiphuong@gmail.com',       '0912222003', 1, '$2a$12$oiwwPvK8FuInO4MYtmAzcOYfi7VdRDbh/.vvK//O3IkWdjKG4wP/W', '2025-02-02 08:30:00', '2025-02-02 08:30:00'),
-(7,  'Đặng Quốc Huy',    '2003-04-22', 'student', 'dangquochuy@gmail.com',       '0912222004', 1, '$2a$12$oiwwPvK8FuInO4MYtmAzcOYfi7VdRDbh/.vvK//O3IkWdjKG4wP/W', '2025-02-02 09:00:00', '2025-02-02 09:00:00'),
-(8,  'Ngô Thị Lan',      '2004-01-05', 'student', 'ngothilan@gmail.com',         '0912222005', 1, '$2a$12$oiwwPvK8FuInO4MYtmAzcOYfi7VdRDbh/.vvK//O3IkWdjKG4wP/W', '2025-02-03 10:15:00', '2025-02-03 10:15:00'),
-(9,  'Bùi Văn Minh',     '2003-08-19', 'student', 'buivanminh@gmail.com',        '0912222006', 1, '$2a$12$oiwwPvK8FuInO4MYtmAzcOYfi7VdRDbh/.vvK//O3IkWdjKG4wP/W', '2025-02-03 10:30:00', '2025-02-03 10:30:00'),
-(10, 'Đinh Thị Nga',     '2002-06-27', 'student', 'dinhthinag@gmail.com',        '0912222007', 1, '$2a$12$oiwwPvK8FuInO4MYtmAzcOYfi7VdRDbh/.vvK//O3IkWdjKG4wP/W', '2025-02-04 08:00:00', '2025-02-04 08:00:00'),
-(11, 'Cao Văn Ổn',       '2004-03-11', 'student', 'caovanon@gmail.com',          '0912222008', 1, '$2a$12$oiwwPvK8FuInO4MYtmAzcOYfi7VdRDbh/.vvK//O3IkWdjKG4wP/W', '2025-02-04 08:30:00', '2025-02-04 08:30:00'),
-(12, 'Lý Thị Phượng',    '2003-11-02', 'student', 'lythiphuong@gmail.com',       '0912222009', 1, '$2a$12$oiwwPvK8FuInO4MYtmAzcOYfi7VdRDbh/.vvK//O3IkWdjKG4wP/W', '2025-02-05 09:00:00', '2025-02-05 09:00:00'),
-(13, 'Admin Hệ Thống',   '1980-01-01', 'admin',   'admin@gmail.com',          '0900000001', 1, '$2a$12$oiwwPvK8FuInO4MYtmAzcOYfi7VdRDbh/.vvK//O3IkWdjKG4wP/W', '2025-01-01 00:00:00', '2025-01-01 00:00:00');
+(1,  'teacher1',  '1985-03-12', 'teacher', 'teacher1@gmail.com', '0901111001', 1, '$2a$12$oiwwPvK8FuInO4MYtmAzcOYfi7VdRDbh/.vvK//O3IkWdjKG4wP/W', '2025-01-10 08:00:00', '2025-01-10 08:00:00'),
+(2,  'teacher2',  '1988-07-25', 'teacher', 'teacher2@gmail.com', '0901111002', 1, '$2a$12$oiwwPvK8FuInO4MYtmAzcOYfi7VdRDbh/.vvK//O3IkWdjKG4wP/W', '2025-01-10 08:05:00', '2025-01-10 08:05:00'),
+(3,  'teacher3',  '1990-11-08', 'teacher', 'teacher3@gmail.com', '0901111003', 1, '$2a$12$oiwwPvK8FuInO4MYtmAzcOYfi7VdRDbh/.vvK//O3IkWdjKG4wP/W', '2025-01-11 09:00:00', '2025-01-11 09:00:00'),
+(4,  'student1',  '1992-05-18', 'student', 'student1@gmail.com', '0912222001', 1, '$2a$12$oiwwPvK8FuInO4MYtmAzcOYfi7VdRDbh/.vvK//O3IkWdjKG4wP/W', '2025-02-01 10:00:00', '2025-02-01 10:00:00'),
+(5,  'student2',  '2003-09-30', 'student', 'student2@gmail.com', '0912222002', 1, '$2a$12$oiwwPvK8FuInO4MYtmAzcOYfi7VdRDbh/.vvK//O3IkWdjKG4wP/W', '2025-02-01 10:10:00', '2025-02-01 10:10:00'),
+(6,  'student3',  '2002-12-14', 'student', 'student3@gmail.com', '0912222003', 1, '$2a$12$oiwwPvK8FuInO4MYtmAzcOYfi7VdRDbh/.vvK//O3IkWdjKG4wP/W', '2025-02-02 08:30:00', '2025-02-02 08:30:00'),
+(7,  'student4',  '2003-04-22', 'student', 'student4@gmail.com', '0912222004', 1, '$2a$12$oiwwPvK8FuInO4MYtmAzcOYfi7VdRDbh/.vvK//O3IkWdjKG4wP/W', '2025-02-02 09:00:00', '2025-02-02 09:00:00'),
+(8,  'student5',  '2004-01-05', 'student', 'student5@gmail.com', '0912222005', 1, '$2a$12$oiwwPvK8FuInO4MYtmAzcOYfi7VdRDbh/.vvK//O3IkWdjKG4wP/W', '2025-02-03 10:15:00', '2025-02-03 10:15:00'),
+(9,  'student6',  '2003-08-19', 'student', 'student6@gmail.com', '0912222006', 1, '$2a$12$oiwwPvK8FuInO4MYtmAzcOYfi7VdRDbh/.vvK//O3IkWdjKG4wP/W', '2025-02-03 10:30:00', '2025-02-03 10:30:00'),
+(10, 'student7',  '2002-06-27', 'student', 'student7@gmail.com', '0912222007', 1, '$2a$12$oiwwPvK8FuInO4MYtmAzcOYfi7VdRDbh/.vvK//O3IkWdjKG4wP/W', '2025-02-04 08:00:00', '2025-02-04 08:00:00'),
+(11, 'student8',  '2004-03-11', 'student', 'student8@gmail.com', '0912222008', 1, '$2a$12$oiwwPvK8FuInO4MYtmAzcOYfi7VdRDbh/.vvK//O3IkWdjKG4wP/W', '2025-02-04 08:30:00', '2025-02-04 08:30:00'),
+(12, 'student9',  '2003-11-02', 'student', 'student9@gmail.com', '0912222009', 1, '$2a$12$oiwwPvK8FuInO4MYtmAzcOYfi7VdRDbh/.vvK//O3IkWdjKG4wP/W', '2025-02-05 09:00:00', '2025-02-05 09:00:00'),
+(13, 'Admin Hệ Thống', '1980-01-01', 'admin', 'admin@gmail.com',   '0900000001', 1, '$2a$12$oiwwPvK8FuInO4MYtmAzcOYfi7VdRDbh/.vvK//O3IkWdjKG4wP/W', '2025-01-01 00:00:00', '2025-01-01 00:00:00'),
+-- Học sinh điểm thấp (để kiểm tra bottom-students / window function)
+(14, 'student10', '2003-06-10', 'student', 'student10@gmail.com', '0912222011', 1, '$2a$12$oiwwPvK8FuInO4MYtmAzcOYfi7VdRDbh/.vvK//O3IkWdjKG4wP/W', '2025-02-06 08:00:00', '2025-02-06 08:00:00'),
+(15, 'student11', '2004-02-20', 'student', 'student11@gmail.com', '0912222012', 1, '$2a$12$oiwwPvK8FuInO4MYtmAzcOYfi7VdRDbh/.vvK//O3IkWdjKG4wP/W', '2025-02-06 08:10:00', '2025-02-06 08:10:00'),
+(16, 'student12', '2003-09-15', 'student', 'student12@gmail.com', '0912222013', 1, '$2a$12$oiwwPvK8FuInO4MYtmAzcOYfi7VdRDbh/.vvK//O3IkWdjKG4wP/W', '2025-02-06 08:20:00', '2025-02-06 08:20:00'),
+(17, 'student13', '2002-11-28', 'student', 'student13@gmail.com', '0912222014', 1, '$2a$12$oiwwPvK8FuInO4MYtmAzcOYfi7VdRDbh/.vvK//O3IkWdjKG4wP/W', '2025-02-06 08:30:00', '2025-02-06 08:30:00'),
+(18, 'student14', '2004-04-05', 'student', 'student14@gmail.com', '0912222015', 1, '$2a$12$oiwwPvK8FuInO4MYtmAzcOYfi7VdRDbh/.vvK//O3IkWdjKG4wP/W', '2025-02-06 08:40:00', '2025-02-06 08:40:00'),
+(19, 'student15', '2003-07-22', 'student', 'student15@gmail.com', '0912222016', 1, '$2a$12$oiwwPvK8FuInO4MYtmAzcOYfi7VdRDbh/.vvK//O3IkWdjKG4wP/W', '2025-02-06 08:50:00', '2025-02-06 08:50:00');
 
 
 -- ============================================================
@@ -212,7 +218,14 @@ INSERT INTO `enrollment` (student_id, class_id, averageScore) VALUES
 -- Lớp AI-K22A (class 6)
 (4,  6, NULL),
 (5,  6, NULL),
-(6,  6, NULL);
+(6,  6, NULL),
+-- Học sinh điểm thấp trong lớp CSDT-K20A (class 1) — để test window function
+(14, 1, 3.50),
+(15, 1, 2.00),
+(16, 1, 4.50),
+(17, 1, 1.50),
+(18, 1, 4.00),
+(19, 1, 5.00);
 
 
 -- ============================================================
@@ -220,26 +233,26 @@ INSERT INTO `enrollment` (student_id, class_id, averageScore) VALUES
 --    class_id  → class(id)
 --    createBy  → user(id) [role = teacher]
 -- ============================================================
-INSERT INTO `test` (id, name, class_id, createBy, turn, startAt, endAt, duration, num_question, type) VALUES
+INSERT INTO `test` (id, name, class_id, createBy, turn, startAt, endAt, duration, num_question) VALUES
 -- Lớp CSDT-K20A
-(1,  'Kiểm tra giữa kỳ - CSDT K20A',   1, 1, 1, '2025-03-15 07:30:00', '2025-03-15 09:30:00', 90,  40,  'midterm'),
-(2,  'Kiểm tra cuối kỳ - CSDT K20A',   1, 1, 1, '2025-05-10 07:30:00', '2025-05-10 10:00:00', 120, 60,  'final'),
+(1,  'Bài kiểm tra 1', 1, 1, 1, '2025-03-15 07:30:00', '2025-03-15 09:30:00', 90,  40),
+(2,  'Bài kiểm tra 2', 1, 1, 1, '2025-05-10 07:30:00', '2025-05-10 10:00:00', 120, 60),
 -- Lớp CSDT-K20B
-(3,  'Kiểm tra giữa kỳ - CSDT K20B',   2, 1, 1, '2025-03-16 13:00:00', '2025-03-16 15:00:00', 90,  40,  'midterm'),
-(4,  'Kiểm tra cuối kỳ - CSDT K20B',   2, 1, 1, '2025-05-11 13:00:00', '2025-05-11 15:30:00', 120, 60,  'final'),
+(3,  'Bài kiểm tra 1', 2, 1, 1, '2025-03-16 13:00:00', '2025-03-16 15:00:00', 90,  40),
+(4,  'Bài kiểm tra 2', 2, 1, 1, '2025-05-11 13:00:00', '2025-05-11 15:30:00', 120, 60),
 -- Lớp OOP-K21A
-(5,  'Kiểm tra chương 1 - OOP K21A',   3, 2, 1, '2025-03-20 08:00:00', '2025-03-20 09:30:00', 60,  30,  'regular'),
-(6,  'Kiểm tra giữa kỳ - OOP K21A',    3, 2, 1, '2025-04-10 08:00:00', '2025-04-10 10:00:00', 90,  45,  'midterm'),
+(5,  'Bài kiểm tra 1', 3, 2, 1, '2025-03-20 08:00:00', '2025-03-20 09:30:00', 60,  30),
+(6,  'Bài kiểm tra 2', 3, 2, 1, '2025-04-10 08:00:00', '2025-04-10 10:00:00', 90,  45),
 -- Lớp OOP-K21B (ended)
-(7,  'Kiểm tra giữa kỳ - OOP K21B',    4, 2, 1, '2025-03-21 14:00:00', '2025-03-21 15:30:00', 90,  40,  'midterm'),
-(8,  'Kiểm tra cuối kỳ - OOP K21B',    4, 2, 1, '2025-04-25 14:00:00', '2025-04-25 16:30:00', 120, 60,  'final'),
+(7,  'Bài kiểm tra 1', 4, 2, 1, '2025-03-21 14:00:00', '2025-03-21 15:30:00', 90,  40),
+(8,  'Bài kiểm tra 2', 4, 2, 1, '2025-04-25 14:00:00', '2025-04-25 16:30:00', 120, 60),
 -- Lớp MMT-K20A
-(9,  'Kiểm tra lý thuyết - MMT K20A',  5, 3, 1, '2025-04-05 09:00:00', '2025-04-05 10:30:00', 60,  30,  'regular'),
+(9,  'Bài kiểm tra 1', 5, 3, 1, '2025-04-05 09:00:00', '2025-04-05 10:30:00', 60,  30),
 -- Lớp AI-K22A
-(10, 'Kiểm tra nhập môn - AI K22A',    6, 1, 1, '2025-05-20 07:30:00', '2025-05-20 09:00:00', 75,  35,  'regular'),
--- Kiểm tra quá trình bổ sung cho lớp CSDT
-(11, 'KT chương 1 - CSDT K20A',        1, 1, 1, '2025-03-01 08:00:00', '2025-03-01 09:30:00', 60,  25,  'regular'),
-(12, 'KT chương 1 - CSDT K20B',        2, 1, 1, '2025-03-02 13:00:00', '2025-03-02 14:30:00', 60,  25,  'regular');
+(10, 'Bài kiểm tra 1', 6, 1, 1, '2025-05-20 07:30:00', '2025-05-20 09:00:00', 75,  35),
+-- Bài kiểm tra bổ sung cho lớp CSDT
+(11, 'Bài kiểm tra 3', 1, 1, 1, '2025-03-01 08:00:00', '2025-03-01 09:30:00', 60,  25),
+(12, 'Bài kiểm tra 3', 2, 1, 1, '2025-03-02 13:00:00', '2025-03-02 14:30:00', 60,  25);
 
 
 -- ============================================================
@@ -304,7 +317,14 @@ INSERT INTO `doexam` (id, student_id, test_id, attendAt, submitAt, score, turn, 
 -- Test 12: KT chương 1 CSDT K20B (regular)
 (42, 9,  12, '2025-03-02 13:02:00', '2025-03-02 14:00:00', 7.5, 1, 'DONE'),
 (43, 10, 12, '2025-03-02 13:00:00', '2025-03-02 13:58:00', 7.0, 1, 'DONE'),
-(44, 11, 12, '2025-03-02 13:01:00', '2025-03-02 14:01:00', 6.0, 1, 'DONE');
+(44, 11, 12, '2025-03-02 13:01:00', '2025-03-02 14:01:00', 6.0, 1, 'DONE'),
+-- Học sinh điểm thấp — Test 1 (Giữa kỳ CSDT K20A)
+(45, 14, 1, '2025-03-15 07:36:00', '2025-03-15 09:02:00', 3.5, 1, 'DONE'),
+(46, 15, 1, '2025-03-15 07:37:00', '2025-03-15 09:05:00', 2.0, 1, 'DONE'),
+(47, 16, 1, '2025-03-15 07:38:00', '2025-03-15 09:06:00', 4.5, 1, 'DONE'),
+(48, 17, 1, '2025-03-15 07:39:00', '2025-03-15 09:07:00', 1.5, 1, 'DONE'),
+(49, 18, 1, '2025-03-15 07:40:00', '2025-03-15 09:08:00', 4.0, 1, 'DONE'),
+(50, 19, 1, '2025-03-15 07:41:00', '2025-03-15 09:09:00', 5.0, 1, 'DONE');
 
 
 -- ============================================================

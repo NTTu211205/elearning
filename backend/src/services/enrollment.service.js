@@ -238,6 +238,7 @@ const getClassesWithTestsByStudent = async (studentId) => {
              c.status                                                        AS classStatus,
              c.createdAt                                                     AS classCreatedAt,
              s.name                                                          AS subjectName,
+             ROUND(e.averageScore, 2)                                        AS averageScore,
              t.id                                                            AS testId,
              t.name                                                          AS testName,
              t.turn                                                          AS maxTurns,
@@ -254,7 +255,7 @@ const getClassesWithTestsByStudent = async (studentId) => {
          LEFT JOIN test t ON t.class_id = c.id
          LEFT JOIN doexam de ON de.test_id = t.id AND de.student_id = e.student_id
          WHERE e.student_id = ?
-         GROUP BY c.id, c.name, c.status, c.createdAt, s.name,
+         GROUP BY c.id, c.name, c.status, c.createdAt, s.name, e.averageScore,
                   t.id, t.name, t.turn, t.startAt, t.endAt, t.duration, t.num_question
          ORDER BY c.createdAt DESC, t.startAt DESC`,
         [studentId]
@@ -268,6 +269,7 @@ const getClassesWithTestsByStudent = async (studentId) => {
                 className: row.className,
                 classStatus: row.classStatus,
                 subjectName: row.subjectName,
+                averageScore: row.averageScore,
                 tests: [],
             });
         }
@@ -412,6 +414,67 @@ const removeAllStudentsFromClass = async (classId) => {
     return { deletedCount: result.affectedRows };
 };
 
+// ─── BOTTOM STUDENTS (Window Function) ───────────────────────────────────────
+
+/**
+ * Lấy tối đa 10 học sinh có điểm trung bình thấp nhất trong lớp (≤ 5).
+ * Sử dụng SQL Window Function PERCENT_RANK() để tính phân vị trong lớp.
+ * Chỉ trả về kết quả nếu có dữ liệu điểm (averageScore IS NOT NULL).
+ */
+const getBottomStudentsByClass = async (classId) => {
+    await classService.getClassById(classId);
+
+    const [rows] = await db.execute(
+        `SELECT studentId, studentName, averageScore, percentileRank, rowRank, totalWithScore
+         FROM (
+             SELECT
+                 u.id                                                                     AS studentId,
+                 u.name                                                                   AS studentName,
+                 e.averageScore,
+                 ROUND(PERCENT_RANK() OVER (ORDER BY e.averageScore ASC) * 100, 1)       AS percentileRank,
+                 ROW_NUMBER() OVER (ORDER BY e.averageScore ASC, u.id ASC)                AS rowRank,
+                 COUNT(*) OVER ()                                                          AS totalWithScore
+             FROM enrollment e
+             JOIN user u ON u.id = e.student_id
+             WHERE e.class_id = ? AND e.averageScore IS NOT NULL
+         ) ranked
+         WHERE averageScore <= 5
+         ORDER BY averageScore ASC
+         LIMIT 10`,
+        [classId]
+    );
+
+    return rows;
+};
+
+const getStudentRankInClass = async (classId, studentId) => {
+    await classService.getClassById(classId);
+
+    const [rows] = await db.execute(
+        `SELECT myRank, classSize, myScore
+         FROM (
+             SELECT
+                 student_id,
+                 ROUND(averageScore, 2)                                          AS myScore,
+                 ROW_NUMBER() OVER (ORDER BY averageScore DESC, student_id ASC)  AS myRank,
+                 COUNT(*) OVER ()                                                AS classSize
+             FROM enrollment
+             WHERE class_id = ? AND averageScore IS NOT NULL
+         ) ranked
+         WHERE student_id = ?`,
+        [classId, studentId]
+    );
+
+    if (rows.length === 0) {
+        return { rank: null, totalStudents: null, averageScore: null };
+    }
+    return {
+        rank: Number(rows[0].myRank),
+        totalStudents: Number(rows[0].classSize),
+        averageScore: rows[0].myScore,
+    };
+};
+
 module.exports = {
     enrollStudent,
     enrollStudents,
@@ -423,4 +486,6 @@ module.exports = {
     updateAverageScore,
     removeStudent,
     removeAllStudentsFromClass,
+    getBottomStudentsByClass,
+    getStudentRankInClass,
 };

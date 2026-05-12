@@ -5,9 +5,9 @@ const questionService = require('../services/question.service');
 
 const addTest = async (req, res) => {
     try {
-        const { name, classId, createBy, turn, startAt, endAt, duration, numQuestion, type } = req.body;
+        const { name, classId, createBy, turn, startAt, endAt, duration, numQuestion } = req.body;
 
-        const result = await testService.createTest({ name, classId, createBy, turn, startAt, endAt, duration, numQuestion, type });
+        const result = await testService.createTest({ name, classId, createBy, turn, startAt, endAt, duration, numQuestion });
 
         res.status(200).json({ message: 'Success', data: result });
     } catch (error) {
@@ -68,9 +68,9 @@ const getTestsByCreator = async (req, res) => {
 const updateTest = async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, classId, turn, startAt, endAt, duration, numQuestion, type } = req.body;
+        const { name, classId, turn, startAt, endAt, duration, numQuestion } = req.body;
 
-        const result = await testService.updateTest({ id, name, classId, turn, startAt, endAt, duration, numQuestion, type });
+        const result = await testService.updateTest({ id, name, classId, turn, startAt, endAt, duration, numQuestion });
 
         res.status(200).json({ message: 'Success', data: result });
     } catch (error) {
