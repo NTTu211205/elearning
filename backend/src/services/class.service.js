@@ -118,7 +118,7 @@ const updateClass = async(classData) => {
 
     // Check: new quantity must not be less than current enrolled student count
     const [[{ currentStudents }]] = await db.execute(
-        'SELECT COUNT(*) AS currentStudents FROM enrollment WHERE class_id = ? AND status = "enrolled"',
+        'SELECT COUNT(*) AS currentStudents FROM enrollment WHERE class_id = ?',
         [classId]
     );
     if (quantity < currentStudents) {
